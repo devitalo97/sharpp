@@ -1,5 +1,6 @@
 "use client";
 import Image from "next/image";
+import { useState } from "react";
 import {
   ImageIcon,
   X,
@@ -8,6 +9,8 @@ import {
   FileTextIcon,
   TagIcon,
   InfoIcon,
+  Eye,
+  Download,
 } from "lucide-react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -19,11 +22,11 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import type { Artifact } from "@/app/lib/backend/domain/artifact.entity";
+import { Artifact } from "@/app/lib/backend/domain/artifact.entity";
+import { ArtifactDetailModal } from "../modal/artifact.modal";
 
 interface ArtifactListProps {
   artifacts: Artifact[];
-  onDelete?: (artifactId: string) => void;
 }
 
 const getTypeIcon = (type: Artifact["type"]) => {
@@ -69,265 +72,319 @@ const formatDate = (date: Date) => {
   }).format(date);
 };
 
-export function ArtifactList({ artifacts, onDelete }: ArtifactListProps) {
-  const handleDelete = (artifactId: string) => {
-    if (onDelete) {
-      onDelete(artifactId);
-    }
+export function ArtifactList({ artifacts }: ArtifactListProps) {
+  const [selectedArtifact, setSelectedArtifact] = useState<Artifact | null>(
+    null
+  );
+  const [isModalOpen, setIsModalOpen] = useState(false);
+
+  const handleDelete = (artifactId: string) => {};
+
+  const handleViewDetails = (artifact: Artifact) => {
+    setSelectedArtifact(artifact);
+    setIsModalOpen(true);
+  };
+
+  const handleCloseModal = () => {
+    setIsModalOpen(false);
+    setSelectedArtifact(null);
+  };
+
+  const handleDownload = (artifact: Artifact) => {
+    const filename = artifact.title || artifact.key.split("/").pop()!;
+    // navegando para a sua própria rota, tudo é same-origin:
+    window.location.href = `/api/artifact/download?key=${
+      artifact.key
+    }&filename=${encodeURIComponent(filename)}`;
   };
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <ImageIcon className="h-5 w-5" />
-          Gallery ({artifacts.length}{" "}
-          {artifacts.length === 1 ? "item" : "items"})
-        </CardTitle>
-      </CardHeader>
-      <CardContent>
-        {artifacts.length === 0 ? (
-          <div className="text-center py-12 text-muted-foreground">
-            <ImageIcon className="h-12 w-12 mx-auto mb-4 opacity-50" />
-            <p>No artifacts uploaded yet</p>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {artifacts.map((artifact) => {
-              const fileName = artifact.key.split("/").pop() || artifact.id;
-              const displayTitle = artifact.title || fileName;
-              const src = artifact.signed_url || "/placeholder.svg";
+    <>
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <ImageIcon className="h-5 w-5" />
+            Gallery ({artifacts.length}{" "}
+            {artifacts.length === 1 ? "item" : "items"})
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {artifacts.length === 0 ? (
+            <div className="text-center py-12 text-muted-foreground">
+              <ImageIcon className="h-12 w-12 mx-auto mb-4 opacity-50" />
+              <p>No artifacts uploaded yet</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {artifacts.map((artifact) => {
+                const fileName = artifact.key.split("/").pop() || artifact.id;
+                const displayTitle = artifact.title || fileName;
+                const src = artifact.signed_url || "/placeholder.svg";
 
-              return (
-                <Card
-                  key={artifact.id}
-                  className="group relative overflow-hidden"
-                >
-                  {/* Header with type and delete button */}
-                  <div className="absolute top-2 left-2 right-2 flex justify-between items-start z-10">
-                    <Badge
-                      className={`${getTypeColor(artifact.type)} border-0`}
-                    >
-                      {getTypeIcon(artifact.type)}
-                      <span className="ml-1 capitalize">{artifact.type}</span>
-                    </Badge>
-
-                    {onDelete && (
-                      <Button
-                        variant="destructive"
-                        size="icon"
-                        className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity"
-                        onClick={() => handleDelete(artifact.id)}
+                return (
+                  <Card
+                    key={artifact.id}
+                    className="group relative overflow-hidden"
+                  >
+                    {/* Header with type and action buttons */}
+                    <div className="absolute top-2 left-2 right-2 flex justify-between items-start z-10">
+                      <Badge
+                        className={`${getTypeColor(artifact.type)} border-0`}
                       >
-                        <X className="h-4 w-4" />
-                      </Button>
-                    )}
-                  </div>
+                        {getTypeIcon(artifact.type)}
+                        <span className="ml-1 capitalize">{artifact.type}</span>
+                      </Badge>
 
-                  {/* Media Preview */}
-                  <div className="aspect-video overflow-hidden bg-muted">
-                    {artifact.type === "image" ? (
-                      <Image
-                        src={src || "/placeholder.svg"}
-                        alt={displayTitle}
-                        width={400}
-                        height={300}
-                        className="h-full w-full object-cover transition-transform group-hover:scale-105"
-                      />
-                    ) : (
-                      <div className="h-full w-full flex items-center justify-center bg-muted">
-                        <div className="text-center">
-                          {getTypeIcon(artifact.type)}
-                          <p className="text-sm text-muted-foreground mt-2">
-                            {artifact.type.toUpperCase()} File
-                          </p>
-                        </div>
+                      <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <Button
+                          variant="secondary"
+                          size="icon"
+                          className="h-8 w-8"
+                          onClick={() => handleViewDetails(artifact)}
+                        >
+                          <Eye className="h-4 w-4" />
+                        </Button>
+
+                        <Button
+                          variant="secondary"
+                          size="icon"
+                          className="h-8 w-8"
+                          onClick={() => handleDownload(artifact)}
+                        >
+                          <Download className="h-4 w-4" />
+                        </Button>
+
+                        <Button
+                          variant="destructive"
+                          size="icon"
+                          className="h-8 w-8"
+                          onClick={() => handleDelete(artifact.id)}
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
                       </div>
-                    )}
-                  </div>
+                    </div>
 
-                  <CardContent className="p-4 space-y-3">
-                    {/* Title and Description */}
-                    <div>
-                      <h3
-                        className="font-semibold text-sm line-clamp-2"
-                        title={displayTitle}
-                      >
-                        {displayTitle}
-                      </h3>
-                      {artifact.description && (
-                        <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
-                          {artifact.description}
-                        </p>
+                    {/* Media Preview */}
+                    <div
+                      className="aspect-video overflow-hidden bg-muted cursor-pointer"
+                      onClick={() => handleViewDetails(artifact)}
+                    >
+                      {artifact.type === "image" ? (
+                        <Image
+                          src={src || "/placeholder.svg"}
+                          alt={displayTitle}
+                          width={400}
+                          height={300}
+                          className="h-full w-full object-cover transition-transform group-hover:scale-105"
+                        />
+                      ) : (
+                        <div className="h-full w-full flex items-center justify-center bg-muted">
+                          <div className="text-center">
+                            {getTypeIcon(artifact.type)}
+                            <p className="text-sm text-muted-foreground mt-2">
+                              {artifact.type.toUpperCase()} File
+                            </p>
+                          </div>
+                        </div>
                       )}
                     </div>
 
-                    {/* Tags */}
-                    {artifact.tags && artifact.tags.length > 0 && (
-                      <div className="flex flex-wrap gap-1">
-                        {artifact.tags.slice(0, 3).map((tag, index) => (
-                          <Badge
-                            key={index}
-                            variant="secondary"
-                            className="text-xs"
-                          >
-                            <TagIcon className="h-3 w-3 mr-1" />
-                            {tag}
-                          </Badge>
-                        ))}
-                        {artifact.tags.length > 3 && (
-                          <TooltipProvider>
-                            <Tooltip>
-                              <TooltipTrigger>
-                                <Badge variant="outline" className="text-xs">
-                                  +{artifact.tags.length - 3}
-                                </Badge>
-                              </TooltipTrigger>
-                              <TooltipContent>
-                                <div className="space-y-1">
-                                  {artifact.tags.slice(3).map((tag, index) => (
-                                    <div key={index} className="text-xs">
-                                      {tag}
-                                    </div>
-                                  ))}
-                                </div>
-                              </TooltipContent>
-                            </Tooltip>
-                          </TooltipProvider>
+                    <CardContent className="p-4 space-y-3">
+                      {/* Title and Description */}
+                      <div>
+                        <h3
+                          className="font-semibold text-sm line-clamp-2 cursor-pointer hover:text-primary"
+                          title={displayTitle}
+                          onClick={() => handleViewDetails(artifact)}
+                        >
+                          {displayTitle}
+                        </h3>
+                        {artifact.description && (
+                          <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
+                            {artifact.description}
+                          </p>
                         )}
                       </div>
-                    )}
 
-                    <Separator />
+                      {/* Tags */}
+                      {artifact.tags && artifact.tags.length > 0 && (
+                        <div className="flex flex-wrap gap-1">
+                          {artifact.tags.slice(0, 3).map((tag, index) => (
+                            <Badge
+                              key={index}
+                              variant="secondary"
+                              className="text-xs"
+                            >
+                              <TagIcon className="h-3 w-3 mr-1" />
+                              {tag}
+                            </Badge>
+                          ))}
+                          {artifact.tags.length > 3 && (
+                            <TooltipProvider>
+                              <Tooltip>
+                                <TooltipTrigger>
+                                  <Badge variant="outline" className="text-xs">
+                                    +{artifact.tags.length - 3}
+                                  </Badge>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                  <div className="space-y-1">
+                                    {artifact.tags
+                                      .slice(3)
+                                      .map((tag, index) => (
+                                        <div key={index} className="text-xs">
+                                          {tag}
+                                        </div>
+                                      ))}
+                                  </div>
+                                </TooltipContent>
+                              </Tooltip>
+                            </TooltipProvider>
+                          )}
+                        </div>
+                      )}
 
-                    {/* Metadata */}
-                    <div className="space-y-2">
-                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                        <InfoIcon className="h-3 w-3" />
-                        <span>Details</span>
-                      </div>
+                      <Separator />
 
-                      <div className="grid grid-cols-2 gap-2 text-xs">
-                        {artifact.metadata?.size_bytes && (
-                          <div>
-                            <span className="text-muted-foreground">Size:</span>
-                            <span className="ml-1">
-                              {formatFileSize(artifact.metadata.size_bytes)}
-                            </span>
-                          </div>
-                        )}
+                      {/* Metadata */}
+                      <div className="space-y-2">
+                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                          <InfoIcon className="h-3 w-3" />
+                          <span>Details</span>
+                        </div>
 
-                        {artifact.metadata?.width &&
-                          artifact.metadata?.height && (
+                        <div className="grid grid-cols-2 gap-2 text-xs">
+                          {artifact.metadata?.size_bytes && (
                             <div>
                               <span className="text-muted-foreground">
-                                Dimensions:
+                                Size:
                               </span>
                               <span className="ml-1">
-                                {artifact.metadata.width}×
-                                {artifact.metadata.height}
+                                {formatFileSize(artifact.metadata.size_bytes)}
                               </span>
                             </div>
                           )}
 
-                        {artifact.metadata?.format && (
+                          {artifact.metadata?.width &&
+                            artifact.metadata?.height && (
+                              <div>
+                                <span className="text-muted-foreground">
+                                  Dimensions:
+                                </span>
+                                <span className="ml-1">
+                                  {artifact.metadata.width}×
+                                  {artifact.metadata.height}
+                                </span>
+                              </div>
+                            )}
+
+                          {artifact.metadata?.format && (
+                            <div>
+                              <span className="text-muted-foreground">
+                                Format:
+                              </span>
+                              <span className="ml-1 uppercase">
+                                {artifact.metadata.format}
+                              </span>
+                            </div>
+                          )}
+
                           <div>
                             <span className="text-muted-foreground">
-                              Format:
+                              Created:
                             </span>
-                            <span className="ml-1 uppercase">
-                              {artifact.metadata.format}
+                            <span className="ml-1">
+                              {formatDate(artifact.created_at)}
                             </span>
                           </div>
-                        )}
-
-                        <div>
-                          <span className="text-muted-foreground">
-                            Created:
-                          </span>
-                          <span className="ml-1">
-                            {formatDate(artifact.created_at)}
-                          </span>
                         </div>
                       </div>
-                    </div>
 
-                    {/* Custom Attributes */}
-                    {artifact.attributes && artifact.attributes.length > 0 && (
-                      <>
-                        <Separator />
-                        <div className="space-y-2">
-                          <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                            <TagIcon className="h-3 w-3" />
-                            <span>Attributes</span>
-                          </div>
+                      {/* Custom Attributes */}
+                      {artifact.attributes &&
+                        artifact.attributes.length > 0 && (
+                          <>
+                            <Separator />
+                            <div className="space-y-2">
+                              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                                <TagIcon className="h-3 w-3" />
+                                <span>Attributes</span>
+                              </div>
 
-                          <div className="space-y-1">
-                            {artifact.attributes
-                              .slice(0, 3)
-                              .map((attr, index) => (
-                                <div
-                                  key={index}
-                                  className="flex justify-between text-xs"
-                                >
-                                  <span className="text-muted-foreground truncate">
-                                    {attr.key}:
-                                  </span>
-                                  <span
-                                    className="ml-2 truncate"
-                                    title={attr.value}
-                                  >
-                                    {attr.value}
-                                  </span>
-                                </div>
-                              ))}
-
-                            {artifact.attributes.length > 3 && (
-                              <TooltipProvider>
-                                <Tooltip>
-                                  <TooltipTrigger asChild>
-                                    <Button
-                                      variant="ghost"
-                                      size="sm"
-                                      className="h-auto p-0 text-xs text-muted-foreground"
+                              <div className="space-y-1">
+                                {artifact.attributes
+                                  .slice(0, 3)
+                                  .map((attr, index) => (
+                                    <div
+                                      key={index}
+                                      className="flex justify-between text-xs"
                                     >
-                                      +{artifact.attributes.length - 3} more
-                                      attributes
-                                    </Button>
-                                  </TooltipTrigger>
-                                  <TooltipContent>
-                                    <div className="space-y-1 max-w-xs">
-                                      {artifact.attributes
-                                        .slice(3)
-                                        .map((attr, index) => (
-                                          <div
-                                            key={index}
-                                            className="flex justify-between text-xs"
-                                          >
-                                            <span className="text-muted-foreground">
-                                              {attr.key}:
-                                            </span>
-                                            <span className="ml-2">
-                                              {attr.value}
-                                            </span>
-                                          </div>
-                                        ))}
+                                      <span className="text-muted-foreground truncate">
+                                        {attr.key}:
+                                      </span>
+                                      <span
+                                        className="ml-2 truncate"
+                                        title={attr.value}
+                                      >
+                                        {attr.value}
+                                      </span>
                                     </div>
-                                  </TooltipContent>
-                                </Tooltip>
-                              </TooltipProvider>
-                            )}
-                          </div>
-                        </div>
-                      </>
-                    )}
-                  </CardContent>
-                </Card>
-              );
-            })}
-          </div>
-        )}
-      </CardContent>
-    </Card>
+                                  ))}
+
+                                {artifact.attributes.length > 3 && (
+                                  <TooltipProvider>
+                                    <Tooltip>
+                                      <TooltipTrigger asChild>
+                                        <Button
+                                          variant="ghost"
+                                          size="sm"
+                                          className="h-auto p-0 text-xs text-muted-foreground"
+                                        >
+                                          +{artifact.attributes.length - 3} more
+                                          attributes
+                                        </Button>
+                                      </TooltipTrigger>
+                                      <TooltipContent>
+                                        <div className="space-y-1 max-w-xs">
+                                          {artifact.attributes
+                                            .slice(3)
+                                            .map((attr, index) => (
+                                              <div
+                                                key={index}
+                                                className="flex justify-between text-xs"
+                                              >
+                                                <span className="text-muted-foreground">
+                                                  {attr.key}:
+                                                </span>
+                                                <span className="ml-2">
+                                                  {attr.value}
+                                                </span>
+                                              </div>
+                                            ))}
+                                        </div>
+                                      </TooltipContent>
+                                    </Tooltip>
+                                  </TooltipProvider>
+                                )}
+                              </div>
+                            </div>
+                          </>
+                        )}
+                    </CardContent>
+                  </Card>
+                );
+              })}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      <ArtifactDetailModal
+        artifact={selectedArtifact}
+        isOpen={isModalOpen}
+        onClose={handleCloseModal}
+      />
+    </>
   );
 }
