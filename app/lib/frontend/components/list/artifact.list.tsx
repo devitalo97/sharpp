@@ -1,5 +1,7 @@
 "use client";
 import Image from "next/image";
+import type React from "react";
+
 import { useState } from "react";
 import {
   ImageIcon,
@@ -11,6 +13,8 @@ import {
   InfoIcon,
   Eye,
   Download,
+  Copy,
+  Check,
 } from "lucide-react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -22,11 +26,68 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { Artifact } from "@/app/lib/backend/domain/artifact.entity";
+import type { Artifact } from "@/app/lib/backend/domain/artifact.entity";
 import { ArtifactDetailModal } from "../modal/artifact.modal";
+import { toast } from "sonner";
 
 interface ArtifactListProps {
   artifacts: Artifact[];
+}
+
+interface CopyableValueProps {
+  value: string;
+  label?: string;
+  className?: string;
+  showIcon?: boolean;
+}
+
+function CopyableValue({
+  value,
+  label,
+  className = "",
+  showIcon = true,
+}: CopyableValueProps) {
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    try {
+      await navigator.clipboard.writeText(value);
+      setCopied(true);
+      toast.success(`${label ? `${label} ` : ""}copied to clipboard`);
+      setTimeout(() => setCopied(false), 2000);
+    } catch (err) {
+      toast.error("Failed to copy to clipboard");
+    }
+  };
+
+  return (
+    <TooltipProvider>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <span
+            className={`cursor-pointer hover:bg-muted/50 rounded px-1 py-0.5 transition-colors inline-flex items-center gap-1 ${className}`}
+            onClick={handleCopy}
+            title={`Click to copy: ${value}`}
+          >
+            {value}
+            {showIcon && (
+              <span className="opacity-0 group-hover:opacity-100 transition-opacity">
+                {copied ? (
+                  <Check className="h-3 w-3 text-green-600" />
+                ) : (
+                  <Copy className="h-3 w-3 text-muted-foreground" />
+                )}
+              </span>
+            )}
+          </span>
+        </TooltipTrigger>
+        <TooltipContent>
+          <p>Click to copy {label ? label.toLowerCase() : "value"}</p>
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
+  );
 }
 
 const getTypeIcon = (type: Artifact["type"]) => {
@@ -214,10 +275,14 @@ export function ArtifactList({ artifacts }: ArtifactListProps) {
                             <Badge
                               key={index}
                               variant="secondary"
-                              className="text-xs"
+                              className="text-xs group/tag"
                             >
                               <TagIcon className="h-3 w-3 mr-1" />
-                              {tag}
+                              <CopyableValue
+                                value={tag}
+                                label="Tag"
+                                showIcon={false}
+                              />
                             </Badge>
                           ))}
                           {artifact.tags.length > 3 && (
@@ -234,7 +299,11 @@ export function ArtifactList({ artifacts }: ArtifactListProps) {
                                       .slice(3)
                                       .map((tag, index) => (
                                         <div key={index} className="text-xs">
-                                          {tag}
+                                          <CopyableValue
+                                            value={tag}
+                                            label="Tag"
+                                            showIcon={false}
+                                          />
                                         </div>
                                       ))}
                                   </div>
@@ -256,46 +325,63 @@ export function ArtifactList({ artifacts }: ArtifactListProps) {
 
                         <div className="grid grid-cols-2 gap-2 text-xs">
                           {artifact.metadata?.size_bytes && (
-                            <div>
+                            <div className="group/detail">
                               <span className="text-muted-foreground">
                                 Size:
                               </span>
                               <span className="ml-1">
-                                {formatFileSize(artifact.metadata.size_bytes)}
+                                <CopyableValue
+                                  value={formatFileSize(
+                                    artifact.metadata.size_bytes
+                                  )}
+                                  label="File size"
+                                  className="text-xs"
+                                />
                               </span>
                             </div>
                           )}
 
                           {artifact.metadata?.width &&
                             artifact.metadata?.height && (
-                              <div>
+                              <div className="group/detail">
                                 <span className="text-muted-foreground">
                                   Dimensions:
                                 </span>
                                 <span className="ml-1">
-                                  {artifact.metadata.width}×
-                                  {artifact.metadata.height}
+                                  <CopyableValue
+                                    value={`${artifact.metadata.width}×${artifact.metadata.height}`}
+                                    label="Dimensions"
+                                    className="text-xs"
+                                  />
                                 </span>
                               </div>
                             )}
 
                           {artifact.metadata?.format && (
-                            <div>
+                            <div className="group/detail">
                               <span className="text-muted-foreground">
                                 Format:
                               </span>
-                              <span className="ml-1 uppercase">
-                                {artifact.metadata.format}
+                              <span className="ml-1">
+                                <CopyableValue
+                                  value={artifact.metadata.format.toUpperCase()}
+                                  label="Format"
+                                  className="text-xs"
+                                />
                               </span>
                             </div>
                           )}
 
-                          <div>
+                          <div className="group/detail">
                             <span className="text-muted-foreground">
                               Created:
                             </span>
                             <span className="ml-1">
-                              {formatDate(artifact.created_at)}
+                              <CopyableValue
+                                value={formatDate(artifact.created_at)}
+                                label="Creation date"
+                                className="text-xs"
+                              />
                             </span>
                           </div>
                         </div>
@@ -318,7 +404,7 @@ export function ArtifactList({ artifacts }: ArtifactListProps) {
                                   .map((attr, index) => (
                                     <div
                                       key={index}
-                                      className="flex justify-between text-xs"
+                                      className="flex justify-between text-xs group/attr"
                                     >
                                       <span className="text-muted-foreground truncate">
                                         {attr.key}:
@@ -327,7 +413,11 @@ export function ArtifactList({ artifacts }: ArtifactListProps) {
                                         className="ml-2 truncate"
                                         title={attr.value}
                                       >
-                                        {attr.value}
+                                        <CopyableValue
+                                          value={attr.value}
+                                          label={attr.key}
+                                          className="text-xs max-w-[120px] truncate"
+                                        />
                                       </span>
                                     </div>
                                   ))}
@@ -358,7 +448,12 @@ export function ArtifactList({ artifacts }: ArtifactListProps) {
                                                   {attr.key}:
                                                 </span>
                                                 <span className="ml-2">
-                                                  {attr.value}
+                                                  <CopyableValue
+                                                    value={attr.value}
+                                                    label={attr.key}
+                                                    className="text-xs"
+                                                    showIcon={false}
+                                                  />
                                                 </span>
                                               </div>
                                             ))}
