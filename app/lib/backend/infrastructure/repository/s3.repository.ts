@@ -35,7 +35,9 @@ export class S3Repository implements IObjectRepository {
     expiresInSeconds = 300,
   }: GenerateSignedUrlParams): Promise<string> {
     const cmd = new GetObjectCommand({ Bucket: this.bucket, Key: key });
-    return getSignedUrl(this.client, cmd, { expiresIn: expiresInSeconds });
+    return getSignedUrl(this.client, cmd, {
+      expiresIn: expiresInSeconds,
+    });
   }
 
   public async download({ key }: DownloadParams): Promise<Readable> {

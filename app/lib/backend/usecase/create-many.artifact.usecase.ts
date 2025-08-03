@@ -68,8 +68,7 @@ export class UploadArtifactUsecase {
     }
   ): Promise<Artifact> {
     const id = uuidv4();
-    const ts = Date.now();
-    const key = `artifact/${ts}-${id}-${file.name}`;
+    const key = `artifact/${id}-${file.name}`;
 
     // upload no S3
     const arrayBuffer = await file.arrayBuffer();
@@ -119,10 +118,10 @@ export class UploadArtifactUsecase {
     // gera signed URL
     const signedUrl = await this.s3Repository.generateSignedUrl({
       key,
-      expiresInSeconds: 300,
+      expiresInSeconds: 60 * 60,
     } as GenerateSignedUrlParams);
     artifact.signed_url = signedUrl;
-    artifact.signed_url_expires_at = new Date(Date.now() + 300 * 1000);
+    artifact.signed_url_expires_at = new Date(Date.now() + 60 * 60 * 1000);
 
     return artifact;
   }

@@ -7,12 +7,12 @@ export interface Artifact {
   updated_at: Date;
   type: "image" | "video" | "pdf" | "other";
   tags?: string[];
-  metadata?: {
+  metadata: {
     width?: number;
     height?: number;
     format?: string;
     size_bytes?: number;
-    content_type?: string; // ex: image/png
+    content_type: string; // ex: image/png
   };
 
   title?: string;
