@@ -26,10 +26,12 @@ export async function uploadArtifactAction(
     title: string;
     description: string;
     attributes: { key: string; value: string }[];
+    tags: string[];
   }[] = files.map(() => ({
     title: "",
     description: "",
     attributes: [],
+    tags: [],
   }));
 
   // percorre todos os pares [chave, valor] do FormData
@@ -49,6 +51,11 @@ export async function uploadArtifactAction(
     if ((match = /^attributes\[(\d+)\]$/.exec(key))) {
       const idx = Number(match[1]);
       metadataList[idx].attributes = JSON.parse(value as string);
+    }
+
+    if ((match = /^tags\[(\d+)\]$/.exec(key))) {
+      const idx = Number(match[1]);
+      metadataList[idx].tags = JSON.parse(value as string);
     }
   }
 

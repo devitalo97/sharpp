@@ -1,10 +1,9 @@
 "use client";
 
 import type React from "react";
-
 import { uploadArtifactAction } from "@/app/lib/backend/action/artifact.action";
-import { useState } from "react";
-import { Upload, X, Plus, Trash2, ImageIcon } from "lucide-react";
+import { useState, type KeyboardEvent } from "react";
+import { Upload, X, Plus, Trash2, ImageIcon, Tag, Hash } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
@@ -18,6 +17,7 @@ interface ArtifactData {
   file: File;
   title: string;
   description: string;
+  tags: string[];
   customAttributes: { key: string; value: string }[];
   preview: string;
 }
@@ -34,6 +34,7 @@ export function CreateManyArtifactForm() {
       file,
       title: file.name.replace(/\.[^/.]+$/, ""), // Remove extension
       description: "",
+      tags: [],
       customAttributes: [],
       preview: URL.createObjectURL(file),
     }));
@@ -58,6 +59,53 @@ export function CreateManyArtifactForm() {
     });
   };
 
+  // Tag management functions
+  const addTag = (artifactIndex: number, tag: string) => {
+    const trimmedTag = tag.trim().toLowerCase();
+    if (!trimmedTag) return;
+
+    const currentTags = artifacts[artifactIndex].tags;
+    if (!currentTags.includes(trimmedTag)) {
+      updateArtifact(artifactIndex, {
+        tags: [...currentTags, trimmedTag],
+      });
+    }
+  };
+
+  const removeTag = (artifactIndex: number, tagToRemove: string) => {
+    const updatedTags = artifacts[artifactIndex].tags.filter(
+      (tag) => tag !== tagToRemove
+    );
+    updateArtifact(artifactIndex, { tags: updatedTags });
+  };
+
+  const handleTagInputKeyDown = (
+    event: KeyboardEvent<HTMLInputElement>,
+    artifactIndex: number
+  ) => {
+    if (event.key === "Enter" || event.key === ",") {
+      event.preventDefault();
+      const input = event.currentTarget;
+      const tag = input.value.trim();
+      if (tag) {
+        addTag(artifactIndex, tag);
+        input.value = "";
+      }
+    }
+  };
+
+  const handleTagInputBlur = (
+    event: React.FocusEvent<HTMLInputElement>,
+    artifactIndex: number
+  ) => {
+    const tag = event.currentTarget.value.trim();
+    if (tag) {
+      addTag(artifactIndex, tag);
+      event.currentTarget.value = "";
+    }
+  };
+
+  // Custom attributes functions
   const addCustomAttribute = (artifactIndex: number) => {
     updateArtifact(artifactIndex, {
       customAttributes: [
@@ -97,6 +145,7 @@ export function CreateManyArtifactForm() {
         formData.append("files", artifact.file);
         formData.append(`titles[${index}]`, artifact.title);
         formData.append(`descriptions[${index}]`, artifact.description);
+        formData.append(`tags[${index}]`, JSON.stringify(artifact.tags));
         formData.append(
           `attributes[${index}]`,
           JSON.stringify(artifact.customAttributes)
@@ -136,7 +185,7 @@ export function CreateManyArtifactForm() {
             disabled={isUploading}
           />
           <p className="text-sm text-muted-foreground">
-            Select multiple images to upload with custom metadata
+            Select multiple images to upload with custom metadata and tags
           </p>
         </div>
 
@@ -229,6 +278,57 @@ export function CreateManyArtifactForm() {
                           />
                         </div>
 
+                        {/* Tags Section */}
+                        <div className="space-y-3">
+                          <Label className="flex items-center gap-2">
+                            <Tag className="h-4 w-4" />
+                            Tags
+                          </Label>
+
+                          {/* Tag Input */}
+                          <div className="space-y-2">
+                            <Input
+                              placeholder="Type a tag and press Enter or comma to add"
+                              onKeyDown={(e) => handleTagInputKeyDown(e, index)}
+                              onBlur={(e) => handleTagInputBlur(e, index)}
+                              className="w-full"
+                            />
+                            <p className="text-xs text-muted-foreground">
+                              Press Enter or comma to add tags
+                            </p>
+                          </div>
+
+                          {/* Display Tags */}
+                          {artifact.tags.length > 0 && (
+                            <div className="flex flex-wrap gap-2">
+                              {artifact.tags.map((tag, tagIndex) => (
+                                <Badge
+                                  key={tagIndex}
+                                  variant="secondary"
+                                  className="flex items-center gap-1 pr-1"
+                                >
+                                  <Hash className="h-3 w-3" />
+                                  {tag}
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="h-4 w-4 p-0 hover:bg-destructive hover:text-destructive-foreground"
+                                    onClick={() => removeTag(index, tag)}
+                                  >
+                                    <X className="h-3 w-3" />
+                                  </Button>
+                                </Badge>
+                              ))}
+                            </div>
+                          )}
+
+                          {artifact.tags.length === 0 && (
+                            <p className="text-sm text-muted-foreground italic">
+                              No tags added yet
+                            </p>
+                          )}
+                        </div>
+
                         {/* Custom Attributes */}
                         <div className="space-y-3">
                           <div className="flex items-center justify-between">
@@ -294,6 +394,12 @@ export function CreateManyArtifactForm() {
                               )}
                             </div>
                           )}
+
+                          {artifact.customAttributes.length === 0 && (
+                            <p className="text-sm text-muted-foreground italic">
+                              No custom attributes added yet
+                            </p>
+                          )}
                         </div>
                       </CardContent>
                     </Card>
@@ -308,26 +414,74 @@ export function CreateManyArtifactForm() {
         {artifacts.length > 0 && (
           <>
             <Separator />
-            <Button
-              onClick={handleUpload}
-              disabled={isUploading || artifacts.length === 0}
-              className="w-full"
-              size="lg"
-            >
-              {isUploading ? (
-                <>
-                  <Upload className="h-4 w-4 mr-2 animate-spin" />
-                  Uploading {artifacts.length} image
-                  {artifacts.length > 1 ? "s" : ""}...
-                </>
-              ) : (
-                <>
-                  <Upload className="h-4 w-4 mr-2" />
-                  Upload {artifacts.length} image
-                  {artifacts.length > 1 ? "s" : ""}
-                </>
-              )}
-            </Button>
+            <div className="space-y-4">
+              {/* Upload Summary */}
+              <div className="bg-muted/50 p-4 rounded-lg">
+                <h4 className="font-medium mb-2">Upload Summary</h4>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                  <div>
+                    <span className="text-muted-foreground">Images:</span>
+                    <span className="ml-2 font-medium">{artifacts.length}</span>
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground">Total Tags:</span>
+                    <span className="ml-2 font-medium">
+                      {artifacts.reduce(
+                        (sum, artifact) => sum + artifact.tags.length,
+                        0
+                      )}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground">
+                      Total Attributes:
+                    </span>
+                    <span className="ml-2 font-medium">
+                      {artifacts.reduce(
+                        (sum, artifact) =>
+                          sum + artifact.customAttributes.length,
+                        0
+                      )}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground">Total Size:</span>
+                    <span className="ml-2 font-medium">
+                      {(
+                        artifacts.reduce(
+                          (sum, artifact) => sum + artifact.file.size,
+                          0
+                        ) /
+                        1024 /
+                        1024
+                      ).toFixed(2)}{" "}
+                      MB
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              <Button
+                onClick={handleUpload}
+                disabled={isUploading || artifacts.length === 0}
+                className="w-full"
+                size="lg"
+              >
+                {isUploading ? (
+                  <>
+                    <Upload className="h-4 w-4 mr-2 animate-spin" />
+                    Uploading {artifacts.length} image
+                    {artifacts.length > 1 ? "s" : ""}...
+                  </>
+                ) : (
+                  <>
+                    <Upload className="h-4 w-4 mr-2" />
+                    Upload {artifacts.length} image
+                    {artifacts.length > 1 ? "s" : ""}
+                  </>
+                )}
+              </Button>
+            </div>
           </>
         )}
 
@@ -337,7 +491,7 @@ export function CreateManyArtifactForm() {
             <ImageIcon className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
             <h3 className="text-lg font-semibold mb-2">No images selected</h3>
             <p className="text-muted-foreground">
-              Choose images to upload and add custom metadata
+              Choose images to upload and add custom metadata and tags
             </p>
           </div>
         )}

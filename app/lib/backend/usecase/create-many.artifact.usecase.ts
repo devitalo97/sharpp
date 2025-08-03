@@ -26,6 +26,7 @@ export class UploadArtifactUsecase {
       title: string;
       description: string;
       attributes: { key: string; value: string }[];
+      tags: string[];
     }[]
   ): Promise<Artifact[]> {
     const items = Array.from(files).map((file, i) => ({
@@ -65,6 +66,7 @@ export class UploadArtifactUsecase {
       title: string;
       description: string;
       attributes: { key: string; value: string }[];
+      tags: string[];
     }
   ): Promise<Artifact> {
     const id = uuidv4();
@@ -102,6 +104,7 @@ export class UploadArtifactUsecase {
       title: string;
       description: string;
       attributes: { key: string; value: string }[];
+      tags: string[];
     } = {
       id,
       key,
@@ -113,6 +116,7 @@ export class UploadArtifactUsecase {
       title: meta.title,
       description: meta.description,
       attributes: meta.attributes,
+      tags: meta.tags,
     };
 
     // gera signed URL
