@@ -20,7 +20,10 @@
     ],
     "paths": {
       "@/*": ["./*"],
-      "@/components/ui/*": ["./app/lib/frontend/components/ui/*"]
+      "@/components/ui/*": ["./app/lib/frontend/components/ui/*"],
+      "@/components/*": ["./app/lib/frontend/components/*"],
+      "@/hooks/*": ["./app/lib/frontend/hooks/*"],
+      "@/layouts/*": ["./app/lib/frontend/layouts/*"]
     }
   },
   "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],

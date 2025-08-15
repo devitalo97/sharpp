@@ -1,7 +1,7 @@
 // src/usecase/find-many-artifact.usecase.ts
 
 import type { IDocumentRepository } from "../domain/repository/document.repository";
-import type { Artifact } from "../domain/artifact.entity";
+import type { Artifact } from "../domain/entity/artifact.entity";
 
 /**
  * Caso de uso para buscar múltiplos Artifacts.

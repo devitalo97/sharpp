@@ -23,7 +23,7 @@ import {
   HardDrive,
   FileType,
 } from "lucide-react";
-import { Artifact } from "@/app/lib/backend/domain/artifact.entity";
+import { Artifact } from "@/app/lib/backend/domain/entity/artifact.entity";
 
 interface ArtifactDetailModalProps {
   artifact: Artifact | null;

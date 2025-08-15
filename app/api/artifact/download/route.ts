@@ -1,5 +1,5 @@
 // app/api/artifact/download/route.ts
-import { Artifact } from "@/app/lib/backend/domain/artifact.entity";
+import { Artifact } from "@/app/lib/backend/domain/entity/artifact.entity";
 import { mongoDbClient } from "@/app/lib/backend/infrastructure/client/mongo.client";
 import { s3Client } from "@/app/lib/backend/infrastructure/client/s3.client";
 import { MongoRepository } from "@/app/lib/backend/infrastructure/repository/mongo.repository";
@@ -26,7 +26,6 @@ export async function GET(req: NextRequest) {
     const { stream, filename, contentType } = await downloadUseCase.execute(
       key
     );
-    console.log("contentType", contentType);
     return new NextResponse(stream, {
       status: 200,
       headers: {

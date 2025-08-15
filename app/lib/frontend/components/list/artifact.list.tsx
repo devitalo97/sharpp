@@ -26,7 +26,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import type { Artifact } from "@/app/lib/backend/domain/artifact.entity";
+import type { Artifact } from "@/app/lib/backend/domain/entity/artifact.entity";
 import { ArtifactDetailModal } from "../modal/artifact.modal";
 import { toast } from "sonner";
 

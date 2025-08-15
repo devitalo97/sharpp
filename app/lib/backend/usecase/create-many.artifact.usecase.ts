@@ -8,7 +8,7 @@ import {
   UploadParams,
 } from "../domain/repository/object.repository";
 import { IDocumentRepository } from "../domain/repository/document.repository";
-import { Artifact } from "../domain/artifact.entity";
+import { Artifact } from "../domain/entity/artifact.entity";
 
 export class UploadArtifactUsecase {
   constructor(
