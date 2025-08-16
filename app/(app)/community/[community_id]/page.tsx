@@ -60,6 +60,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
 
 import { PromoLinks } from "@/app/lib/frontend/components/promo-links";
+import { RoleEnum } from "@/app/lib/frontend/components/form/use-member.form";
 
 type Member = {
   id: string;

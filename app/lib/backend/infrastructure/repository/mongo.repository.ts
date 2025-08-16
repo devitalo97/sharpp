@@ -70,4 +70,14 @@ export class MongoRepository<T extends object>
     await this.collection.insertMany(docs);
     return items;
   }
+
+  /**
+   * Insere único item (sem `_id`) e devolve os próprios modelos.
+   */
+  public async insertOne(item: T): Promise<T> {
+    // Converte para o tipo aceito pelo Mongo (OptionalUnlessRequiredId<T>)
+    const doc = item as OptionalUnlessRequiredId<T>;
+    await this.collection.insertOne(doc);
+    return item;
+  }
 }

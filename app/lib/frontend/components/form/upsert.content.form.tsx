@@ -1,6 +1,6 @@
 "use client";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -16,15 +16,28 @@ import {
   ImageIcon,
   Video,
   Music,
-  Link2,
   CloudUpload,
   RefreshCcw,
+  Save,
 } from "lucide-react";
 import { toast } from "sonner";
-import { useContentLinkForm } from "./use-content-link.form";
-import { normalize } from "../../util/normalize";
+import { Content } from "@/app/lib/backend/domain/entity/content.entity";
+import { useContentUpsertForm } from "./use-upsert.content.form";
+import { normalize } from "path";
 
-export function ContentLinkForm() {
+interface ContentUpsertFormProps {
+  initialData?: Content;
+  communityId: string;
+  onCancel?: () => void;
+  mode?: "create" | "edit";
+}
+
+export function ContentUpsertForm({
+  initialData,
+  communityId,
+  onCancel,
+  mode = "create",
+}: ContentUpsertFormProps) {
   const {
     form,
     fields,
@@ -44,30 +57,32 @@ export function ContentLinkForm() {
     uploadAllMedias,
     removeMedia,
     onSubmit,
-  } = useContentLinkForm();
+  } = useContentUpsertForm({
+    initialData,
+    communityId,
+  });
 
-  // Obter ícone do tipo de arquivo
-  const getFileIcon = (file: File) => {
-    if (file.type.startsWith("image/"))
-      return <ImageIcon className="h-4 w-4" />;
-    if (file.type.startsWith("video/")) return <Video className="h-4 w-4" />;
-    if (file.type.startsWith("audio/")) return <Music className="h-4 w-4" />;
+  const isEditMode = mode === "edit" || !!initialData;
+
+  const getFileIcon = (fileOrType: File | string) => {
+    const type = typeof fileOrType === "string" ? fileOrType : fileOrType.type;
+    if (type.startsWith("image/")) return <ImageIcon className="h-4 w-4" />;
+    if (type.startsWith("video/")) return <Video className="h-4 w-4" />;
+    if (type.startsWith("audio/")) return <Music className="h-4 w-4" />;
     return <FileText className="h-4 w-4" />;
   };
+
   return (
     <Card className="border max-w-4xl">
-      <CardHeader className="border-b">
-        <CardTitle className="flex items-center gap-2 text-lg font-medium">
-          <Link2 className="h-5 w-5" />
-          Informações do Link
-        </CardTitle>
-      </CardHeader>
       <CardContent className="p-6">
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+        <form
+          onSubmit={form.handleSubmit(onSubmit, (e) => console.log(e))}
+          className="space-y-8"
+        >
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <div className="space-y-2">
               <Label htmlFor="name" className="text-sm font-medium">
-                Nome do Link
+                Nome do Conteúdo
               </Label>
               <Input
                 id="name"
@@ -77,7 +92,7 @@ export function ContentLinkForm() {
                     form.setValue("slug", normalize(e.target.value));
                   },
                 })}
-                placeholder="Digite o nome do link de conteúdo"
+                placeholder="Digite o nome do conteúdo"
                 className="h-10"
               />
               {form.formState.errors.name && (
@@ -97,7 +112,7 @@ export function ContentLinkForm() {
                 })}
               />
               <p className="text-sm text-muted-foreground">
-                URL amigável para o link
+                URL amigável para o conteúdo
               </p>
               {form.formState.errors.slug && (
                 <p className="text-sm text-destructive">
@@ -106,14 +121,14 @@ export function ContentLinkForm() {
               )}
             </div>
 
-            <div className="space-y-2">
+            <div className="space-y-2 lg:col-span-2">
               <Label htmlFor="description" className="text-sm font-medium">
-                Descrição do Link
+                Descrição do Conteúdo
               </Label>
               <Textarea
                 id="description"
                 {...form.register("description")}
-                placeholder="Descrição opcional do link"
+                placeholder="Descrição opcional do conteúdo"
                 rows={3}
                 className="resize-none"
               />
@@ -130,7 +145,8 @@ export function ContentLinkForm() {
                   Mídias Digitais
                 </Label>
                 <p className="text-sm text-muted-foreground">
-                  Adicione arquivos de imagem, vídeo, áudio ou documentos
+                  {isEditMode ? "Gerencie" : "Adicione"} arquivos de imagem,
+                  vídeo, áudio ou documentos
                 </p>
               </div>
               <div className="flex gap-2">
@@ -142,16 +158,10 @@ export function ContentLinkForm() {
                   <Plus className="h-4 w-4 mr-2" />
                   Adicionar Arquivos
                 </Button>
-                {fields.length > 0 && (
-                  <Button
-                    type="button"
-                    onClick={uploadAllMedias}
-                    disabled={fields.every(
-                      (media) => media.upload.status === "completed"
-                    )}
-                  >
+                {fields.some((media) => media.upload?.status === "pending") && (
+                  <Button type="button" onClick={uploadAllMedias}>
                     <Upload className="h-4 w-4 mr-2" />
-                    Upload Todos
+                    Upload Pendentes
                   </Button>
                 )}
               </div>
@@ -166,13 +176,39 @@ export function ContentLinkForm() {
               className="hidden"
             />
 
-            {form.formState.errors.medias && (
-              <div className="p-3 rounded-md bg-destructive/10 border border-destructive/20">
-                <p className="text-sm text-destructive">
-                  {form.formState.errors.medias.message}
-                </p>
-              </div>
-            )}
+            {Array.isArray(form.formState.errors.medias) &&
+              form.formState.errors.medias.length > 0 && (
+                <div className="p-3 rounded-md bg-destructive/10 border border-destructive/20 mb-2">
+                  {form.formState.errors.medias.map((mediaError, index) => (
+                    <div key={index} className="mb-2">
+                      <p className="text-sm text-destructive font-bold">
+                        Erros na mídia {index + 1}:
+                      </p>
+                      <ul className="list-disc pl-5 text-sm text-destructive">
+                        {Object.entries(mediaError ?? {}).map(
+                          ([field, err]) => {
+                            const anyErr = err as any;
+                            const message =
+                              anyErr?.message ??
+                              (Array.isArray(anyErr)
+                                ? anyErr
+                                    .map((e: any) => e?.message)
+                                    .filter(Boolean)
+                                    .join(", ")
+                                : undefined);
+
+                            return message ? (
+                              <li key={field}>
+                                {field}: {message}
+                              </li>
+                            ) : null;
+                          }
+                        )}
+                      </ul>
+                    </div>
+                  ))}
+                </div>
+              )}
 
             <div className="space-y-4">
               {fields.map((media, index) => (
@@ -181,20 +217,27 @@ export function ContentLinkForm() {
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-3">
                         <div className="p-2 rounded-md bg-muted">
-                          {getFileIcon(media.file)}
+                          {getFileIcon(media.file || media.type)}
                         </div>
                         <div className="space-y-1">
                           <h3 className="font-medium text-sm truncate max-w-xs">
-                            {media.file.name}
+                            {media.file?.name || media.name}
                           </h3>
                           <div className="flex items-center gap-2">
                             <Badge variant="secondary" className="text-xs">
-                              {(media.file.size / 1024 / 1024).toFixed(2)} MB
+                              {(
+                                (media.file?.size || media.size) /
+                                1024 /
+                                1024
+                              ).toFixed(2)}{" "}
+                              MB
                             </Badge>
-                            {media.upload.status === "completed" && (
-                              <Badge className="text-xs">Enviado</Badge>
+                            {media.upload?.status === "completed" && (
+                              <Badge className="text-xs">
+                                {media.file ? "Novo arquivo" : "Salvo"}
+                              </Badge>
                             )}
-                            {media.upload.status === "error" && (
+                            {media.upload?.status === "error" && (
                               <>
                                 <Badge
                                   variant="destructive"
@@ -205,7 +248,7 @@ export function ContentLinkForm() {
                                 <Button
                                   type="button"
                                   size="sm"
-                                  variant={"outline"}
+                                  variant="outline"
                                   onClick={() => uploadMedia(index)}
                                 >
                                   <RefreshCcw className="h-4 w-4 mr-1" />
@@ -216,7 +259,7 @@ export function ContentLinkForm() {
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
-                        {media.upload.status === "pending" && (
+                        {media.upload?.status === "pending" && (
                           <Button
                             type="button"
                             size="sm"
@@ -237,7 +280,7 @@ export function ContentLinkForm() {
                       </div>
                     </div>
 
-                    {media.upload.status === "uploading" && (
+                    {media.upload?.status === "uploading" && (
                       <div className="space-y-2 p-3 rounded-md bg-muted">
                         <div className="flex items-center justify-between">
                           <span className="text-sm font-medium">
@@ -283,7 +326,7 @@ export function ContentLinkForm() {
                     <div className="space-y-3">
                       <Label className="text-sm font-medium">Tags</Label>
 
-                      {media.tags.length > 0 && (
+                      {media.tags && media.tags.length > 0 && (
                         <div className="flex flex-wrap gap-2">
                           {media.tags.map((tag, tagIndex) => (
                             <Badge
@@ -341,7 +384,6 @@ export function ContentLinkForm() {
                         Atributos Customizados
                       </Label>
 
-                      {/* inputs + botão */}
                       <div className="grid grid-cols-1 sm:grid-cols-[1fr_1fr_auto] gap-2">
                         <Input
                           value={getNewAttributeKey(index)}
@@ -407,10 +449,10 @@ export function ContentLinkForm() {
                         </Button>
                       </div>
 
-                      {/* linha única com chips minimalistas */}
-                      {Object.entries(media.custom_attributes).length > 0 && (
+                      {Object.entries(media.custom_attributes || {}).length >
+                        0 && (
                         <div className="flex items-center gap-2 overflow-x-auto rounded-md border bg-background px-2 py-2">
-                          {Object.entries(media.custom_attributes).map(
+                          {Object.entries(media.custom_attributes || {}).map(
                             ([key, value]) => (
                               <button
                                 key={key}
@@ -442,19 +484,32 @@ export function ContentLinkForm() {
             </div>
           </div>
 
-          <div className="flex justify-end pt-6 border-t">
+          <div className="flex justify-between pt-6 border-t">
+            {onCancel && (
+              <Button
+                type="button"
+                variant="outline"
+                onClick={onCancel}
+                disabled={isSubmitting}
+              >
+                Cancelar
+              </Button>
+            )}
             <Button
               type="submit"
               disabled={isSubmitting || fields.length === 0}
-              className="min-w-32"
+              className="min-w-32 ml-auto"
             >
               {isSubmitting ? (
                 <>
                   <div className="animate-spin rounded-full h-4 w-4 border-2 border-primary-foreground border-t-transparent mr-2" />
-                  Salvando...
+                  {isEditMode ? "Salvando..." : "Criando..."}
                 </>
               ) : (
-                "Criar Link"
+                <>
+                  <Save className="h-4 w-4 mr-2" />
+                  {isEditMode ? "Salvar Alterações" : "Criar Conteúdo"}
+                </>
               )}
             </Button>
           </div>

@@ -1,7 +1,6 @@
 "use client";
 
 import type React from "react";
-
 import { useState } from "react";
 import { useForm, useFieldArray, type Resolver } from "react-hook-form";
 import { z } from "zod";
@@ -9,25 +8,26 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
 import { nanoid } from "nanoid";
 import { extension } from "mime-types";
-import { createManyContentAction } from "@/app/lib/backend/action/content.action";
+import { Content } from "@/app/lib/backend/domain/entity/content.entity";
+import {
+  createOneContentAction,
+  updateOneContentAction,
+} from "@/app/lib/backend/action/content.action";
 
-const mimeTypeRegex = /^[a-z]+\/[a-z0-9.+-]+$/i; // ex.: image/png, video/mp4
-const hexRegex = /^[A-Fa-f0-9]+$/; // checksum em hex (MD5/SHA*)
+const mimeTypeRegex = /^[a-z]+\/[a-z0-9.+-]+$/i;
+const hexRegex = /^[A-Fa-f0-9]+$/;
 
 export const mediaSchema = z.object({
-  file: z.instanceof(File),
-
+  file: z.instanceof(File).optional(), // Optional for existing media
   id: z.string().min(1, "id é obrigatório"),
   community_id: z.string().min(1, "community_id é obrigatório"),
   content_id: z.string().min(1, "content_id é obrigatório"),
-
   name: z.string().min(1, "name é obrigatório"),
   description: z.string().optional(),
   type: z
     .string()
     .regex(mimeTypeRegex, "type deve ser um MIME válido (ex.: image/png)"),
   size: z.number().int().nonnegative().describe("tamanho em bytes"),
-
   metadata: z
     .object({
       width: z.number().int().positive().optional(),
@@ -35,36 +35,32 @@ export const mediaSchema = z.object({
       format: z.string().min(1).optional(),
     })
     .optional(),
-
   tags: z.array(z.string().min(1)).optional().default([]),
-
-  custom_attributes: z.record(z.string(), z.string()),
-
+  custom_attributes: z.record(z.string(), z.string()).optional().default({}),
   storage: z.object({
     key: z.string().min(1, "storage.key é obrigatório"),
     url: z.url().optional(),
-    expires_at: z.number().int().positive().optional(), // timestamp (ms ou s)
+    expires_at: z.number().int().positive().optional(),
     checksum: z
       .string()
       .regex(hexRegex, "checksum deve ser hexadecimal")
       .optional(),
   }),
-
   upload: z.object({
     progress: z.number().default(0),
     status: z
       .enum(["pending", "uploading", "completed", "error"])
       .default("pending"),
-    url: z.string(),
+    url: z.string().optional(),
   }),
 });
 
-export type Media = z.infer<typeof mediaSchema>;
+export type MediaFormData = z.infer<typeof mediaSchema>;
 
-const contentLinkSchema = z.object({
-  id: z.string().default(() => nanoid(21)),
-  community_id: z.string().default(() => nanoid(21)),
-  name: z.string().min(1, "Nome do link é obrigatório"),
+const contentUpsertSchema = z.object({
+  id: z.string().optional(),
+  community_id: z.string().min(1, "community_id é obrigatório"),
+  name: z.string().min(1, "Nome do conteúdo é obrigatório"),
   slug: z
     .string()
     .min(2, "Slug deve ter pelo menos 2 caracteres")
@@ -77,34 +73,55 @@ const contentLinkSchema = z.object({
   medias: z.array(mediaSchema).min(1, "Pelo menos uma mídia é obrigatória"),
 });
 
-type ContentLinkForm = z.infer<typeof contentLinkSchema>;
+type ContentUpsertFormSchema = z.infer<typeof contentUpsertSchema>;
 
-export function useContentLinkForm() {
-  const contentId = nanoid(21);
-  const communityId = nanoid(21);
+interface UseContentUpsertFormProps {
+  initialData?: Content;
+  communityId: string;
+}
+
+export function useContentUpsertForm({
+  initialData,
+  communityId,
+}: UseContentUpsertFormProps) {
+  const isEditMode = !!initialData;
+  const contentId = initialData?.id || nanoid(21);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [newTag, setNewTag] = useState("");
   const [newAttributeStates, setNewAttributeStates] = useState<
     Record<number, { key: string; value: string }>
   >({});
 
-  const form = useForm<ContentLinkForm>({
-    resolver: zodResolver(contentLinkSchema) as Resolver<ContentLinkForm>,
+  const form = useForm<ContentUpsertFormSchema>({
+    resolver: zodResolver(
+      contentUpsertSchema
+    ) as Resolver<ContentUpsertFormSchema>,
     defaultValues: {
-      name: "",
-      description: "",
-      medias: [],
-      slug: "",
+      id: initialData?.id,
+      community_id: communityId,
+      name: initialData?.name || "",
+      slug: initialData?.slug || "",
+      description: initialData?.description || "",
+      medias:
+        initialData?.medias?.map((media) => ({
+          ...media,
+          tags: media.tags || [],
+          custom_attributes: media.custom_attributes || {},
+          upload: {
+            progress: 100,
+            status: "completed" as const,
+            url: media.storage?.url || "",
+          },
+        })) || [],
     },
   });
 
   const { fields, append, remove, update } = useFieldArray({
     control: form.control,
     name: "medias",
-    keyName: "id", // Usar nanoid como chave única
+    keyName: "id",
   });
 
-  // Função para gerar chave S3 única
   const generateS3Key = (
     file: File,
     communityId: string,
@@ -118,7 +135,6 @@ export function useContentLinkForm() {
     return `${communityId}/${contentId}/${mediaId}.${ext}`;
   };
 
-  // Função para obter URL pré-assinada
   const getSignedUploadUrl = async (
     file: File,
     s3Key: string
@@ -142,7 +158,6 @@ export function useContentLinkForm() {
     return data.signedUrl;
   };
 
-  // Função para fazer upload do arquivo
   const uploadFile = async (
     file: File,
     signedUrl: string,
@@ -179,7 +194,6 @@ export function useContentLinkForm() {
     });
   };
 
-  // Adicionar arquivos
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(event.target.files || []);
 
@@ -192,7 +206,7 @@ export function useContentLinkForm() {
         content_id: contentId,
         community_id: communityId,
         file,
-        name: file.name.replace(/\.[^/.]+$/, ""), // Remove extensão
+        name: file.name.replace(/\.[^/.]+$/, ""),
         description: "",
         tags: [],
         custom_attributes: {},
@@ -209,16 +223,14 @@ export function useContentLinkForm() {
       });
     });
 
-    // Reset input
     event.target.value = "";
   };
 
-  // Adicionar tag
   const addTag = (mediaIndex: number) => {
     if (!newTag.trim()) return;
 
     const currentMedia = fields[mediaIndex];
-    const updatedTags = [...currentMedia.tags, newTag.trim()];
+    const updatedTags = [...(currentMedia.tags || []), newTag.trim()];
 
     update(mediaIndex, {
       ...currentMedia,
@@ -228,10 +240,9 @@ export function useContentLinkForm() {
     setNewTag("");
   };
 
-  // Remover tag
   const removeTag = (mediaIndex: number, tagIndex: number) => {
     const currentMedia = fields[mediaIndex];
-    const updatedTags = currentMedia.tags!.filter(
+    const updatedTags = (currentMedia.tags || []).filter(
       (_, index) => index !== tagIndex
     );
 
@@ -247,14 +258,14 @@ export function useContentLinkForm() {
   const getNewAttributeValue = (mediaIndex: number) =>
     newAttributeStates[mediaIndex]?.value || "";
 
-  const setNewAttributeKey = (mediaIndex: number, key: string) => {
+  const setNewAttributeKey = (mediaIndex: number) => (key: string) => {
     setNewAttributeStates((prev) => ({
       ...prev,
       [mediaIndex]: { ...prev[mediaIndex], key },
     }));
   };
 
-  const setNewAttributeValue = (mediaIndex: number, value: string) => {
+  const setNewAttributeValue = (mediaIndex: number) => (value: string) => {
     setNewAttributeStates((prev) => ({
       ...prev,
       [mediaIndex]: { ...prev[mediaIndex], value },
@@ -269,7 +280,7 @@ export function useContentLinkForm() {
 
     const currentMedia = fields[mediaIndex];
     const updatedAttributes = {
-      ...currentMedia.custom_attributes,
+      ...(currentMedia.custom_attributes || {}),
       [key.trim()]: value.trim(),
     };
 
@@ -278,17 +289,15 @@ export function useContentLinkForm() {
       custom_attributes: updatedAttributes,
     });
 
-    // Clear the states for this media
     setNewAttributeStates((prev) => ({
       ...prev,
       [mediaIndex]: { key: "", value: "" },
     }));
   };
 
-  // Remover atributo customizado
   const removeCustomAttribute = (mediaIndex: number, attributeKey: string) => {
     const currentMedia = fields[mediaIndex];
-    const updatedAttributes = { ...currentMedia.custom_attributes };
+    const updatedAttributes = { ...(currentMedia.custom_attributes || {}) };
     delete updatedAttributes[attributeKey];
 
     update(mediaIndex, {
@@ -297,12 +306,11 @@ export function useContentLinkForm() {
     });
   };
 
-  // Fazer upload de uma mídia
   const uploadMedia = async (mediaIndex: number) => {
     const media = fields[mediaIndex];
+    if (!media.file) return;
 
     try {
-      // Atualizar status para uploading
       update(mediaIndex, {
         ...media,
         upload: {
@@ -316,13 +324,8 @@ export function useContentLinkForm() {
         id: `upload-${mediaIndex}`,
       });
 
-      // Obter URL pré-assinada
-      const signedUrl = await getSignedUploadUrl(
-        media.file,
-        media.storage!.key
-      );
+      const signedUrl = await getSignedUploadUrl(media.file, media.storage.key);
 
-      // Fazer upload
       await uploadFile(media.file, signedUrl, (progress) => {
         update(mediaIndex, {
           ...fields[mediaIndex],
@@ -337,7 +340,6 @@ export function useContentLinkForm() {
         });
       });
 
-      // Marcar como concluído
       update(mediaIndex, {
         ...fields[mediaIndex],
         upload: {
@@ -366,11 +368,10 @@ export function useContentLinkForm() {
     }
   };
 
-  // Fazer upload de todas as mídias
   const uploadAllMedias = async () => {
     const pendingMedias = fields
       .map((media, index) => ({ media, index }))
-      .filter(({ media }) => media.upload.status === "pending");
+      .filter(({ media }) => media.upload?.status === "pending");
 
     if (pendingMedias.length === 0) {
       toast.info("Não há mídias pendentes para upload.");
@@ -386,40 +387,49 @@ export function useContentLinkForm() {
     toast.success("Todos os uploads foram concluídos!");
   };
 
-  // Submeter formulário
-  const onSubmit = async (data: ContentLinkForm) => {
+  const onSubmit = async (data: ContentUpsertFormSchema) => {
     setIsSubmitting(true);
 
     try {
-      // Verificar se todas as mídias foram enviadas
       const pendingUploads = data.medias.filter(
-        (media) => media.upload.status !== "completed"
+        (media) => media.upload?.status !== "completed"
       );
 
       if (pendingUploads.length > 0) {
-        toast.error(
-          "Todas as mídias devem ser enviadas antes de salvar o link."
-        );
+        toast.error("Todas as mídias devem ser enviadas antes de salvar.");
         return;
       }
 
-      toast.loading("Salvando link de conteúdo...");
-
-      // Aqui você faria a chamada para salvar o link de conteúdo no banco de dados
-      const content = {
+      const contentData = {
         ...data,
-        medias: data.medias.map(({ upload, ...media }) => media),
+        medias: data.medias.map(({ upload, file, ...media }) => media),
       };
 
-      // Simular delay de API
-      await createManyContentAction([content]);
+      if (isEditMode) {
+        await updateOneContentAction(contentId, contentData);
+      } else {
+        await createOneContentAction({ ...contentData, id: contentId });
+      }
 
-      toast.success("Link de conteúdo criado com sucesso!");
+      toast.loading(
+        isEditMode ? "Salvando alterações..." : "Criando conteúdo..."
+      );
 
-      // Reset do formulário
-      form.reset();
+      toast.success(
+        isEditMode
+          ? "Conteúdo atualizado com sucesso!"
+          : "Conteúdo criado com sucesso!"
+      );
+
+      if (!isEditMode) {
+        form.reset();
+      }
     } catch (error) {
-      toast.error("Ocorreu um erro ao salvar o link de conteúdo.");
+      toast.error(
+        initialData
+          ? "Ocorreu um erro ao salvar as alterações."
+          : "Ocorreu um erro ao criar o conteúdo."
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -433,10 +443,8 @@ export function useContentLinkForm() {
     setNewTag,
     getNewAttributeKey,
     getNewAttributeValue,
-    setNewAttributeKey: (mediaIndex: number) => (key: string) =>
-      setNewAttributeKey(mediaIndex, key),
-    setNewAttributeValue: (mediaIndex: number) => (value: string) =>
-      setNewAttributeValue(mediaIndex, value),
+    setNewAttributeKey,
+    setNewAttributeValue,
     handleFileSelect,
     addTag,
     removeTag,
