@@ -1,13 +1,22 @@
 export interface Media {
   id: string;
   community_id: string;
-  filename: string;
-  mime_type: string; // ex: image/png, video/mp4, application/pdf
-  metadata: {
+  content_id: string;
+  name: string;
+  description?: string;
+  type: string; // ex: image/png, video/mp4, application/pdf
+  size: number;
+  metadata?: {
     width?: number;
     height?: number;
     format?: string;
-    size_bytes?: number;
   };
   tags?: string[];
+  custom_attributes?: Record<string, string>;
+  storage: {
+    key: string; // Caminho do arquivo no storage object
+    url?: string; // URL de acesso temporario
+    expires_at?: number; // Data de expiração do URL
+    checksum?: string; // Hash do arquivo para verificação de integridade
+  };
 }

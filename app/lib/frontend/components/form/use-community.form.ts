@@ -5,6 +5,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import z from "zod/v3";
 import { useState } from "react";
 import { toast } from "sonner";
+import { normalize } from "../../util/normalize";
 
 const communitySchema = z.object({
   name: z
@@ -57,21 +58,10 @@ export function useCommunityForm() {
   const watchedAvatarUrl = form.watch("avatarUrl");
   const watchedCoverUrl = form.watch("coverUrl");
 
-  const generateSlug = (name: string) => {
-    return name
-      .toLowerCase()
-      .normalize("NFD")
-      .replace(/[\u0300-\u036f]/g, "")
-      .replace(/[^a-z0-9\s-]/g, "")
-      .replace(/\s+/g, "-")
-      .replace(/-+/g, "-")
-      .trim();
-  };
-
   const handleNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const name = e.target.value;
     form.setValue("name", name);
-    form.setValue("slug", generateSlug(name));
+    form.setValue("slug", normalize(name));
   };
 
   const addTag = () => {

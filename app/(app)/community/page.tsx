@@ -104,7 +104,7 @@ export default function Page() {
               variant="outline"
               className="gap-1 bg-transparent"
             >
-              <Link href={`/comunidades/${item.id}`}>
+              <Link href={`/community/${item.id}`}>
                 Gerenciar
                 <ArrowRight className="size-4" />
               </Link>

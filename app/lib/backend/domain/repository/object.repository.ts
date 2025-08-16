@@ -16,9 +16,7 @@ export interface GenerateSignedGetUrlParams {
 export interface GenerateSignedPutUrlParams {
   key: string;
   contentType: string;
-  contentLength: number;
   expiresInSeconds?: number;
-  contentDispositionFileName?: string;
   metadata?: Record<string, string>;
 }
 

@@ -3,9 +3,7 @@ import { IObjectRepository } from "../domain/repository/object.repository";
 export interface GenerateSignedPutUrlInput {
   key: string;
   contentType: string;
-  contentLength: number;
   expiresInSeconds?: number;
-  contentDispositionFileName?: string;
   metadata?: Record<string, string>;
 }
 
@@ -17,9 +15,7 @@ export class GenerateSignedPutUrlUseCase {
     const signedUrl = await this.objectRepository.generateSignedPutUrl({
       key: input.key,
       contentType: input.contentType,
-      contentLength: input.contentLength,
       expiresInSeconds: input.expiresInSeconds,
-      contentDispositionFileName: input.contentDispositionFileName,
       metadata: input.metadata,
     });
 

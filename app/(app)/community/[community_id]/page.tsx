@@ -58,14 +58,7 @@ import {
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
-import {
-  CommunityInput,
-  CommunitySchema,
-  MemberInput,
-  MemberSchema,
-  RoleEnum,
-} from "../new/page";
-import { ContentLinks } from "@/app/lib/frontend/components/content-links";
+
 import { PromoLinks } from "@/app/lib/frontend/components/promo-links";
 
 type Member = {

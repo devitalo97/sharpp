@@ -1,6 +1,6 @@
 import { Filter, UpdateFilter } from "mongodb";
 
-export interface IDocumentRepository<T extends object> {
+export interface IDocumentRepository<T extends object = object> {
   create(item: T): Promise<T>;
   findOne(filter: Filter<T>): Promise<T | null>;
   findMany(filter: Filter<T>): Promise<T[]>;

@@ -71,16 +71,9 @@ export class S3Repository implements IObjectRepository {
     contentType: string;
     contentLength: number;
     expiresInSeconds?: number;
-    contentDispositionFileName?: string;
     metadata?: Record<string, string>;
   }): Promise<string> {
-    const {
-      key,
-      contentType,
-      contentLength,
-      contentDispositionFileName,
-      metadata,
-    } = input;
+    const { key, contentType, contentLength, metadata } = input;
     validateS3Key(key);
     validateContentLength(contentLength);
 
@@ -88,12 +81,7 @@ export class S3Repository implements IObjectRepository {
       Bucket: this.cfg.bucket,
       Key: key,
       ContentType: contentType,
-      ContentLength: contentLength,
-      CacheControl: "private, max-age=0, no-cache",
       Metadata: normalizeMetadata(metadata),
-      ContentDisposition: contentDispositionFileName
-        ? `inline; filename="${sanitizeFileName(contentDispositionFileName)}"`
-        : undefined,
     };
 
     try {
