@@ -1,4 +1,4 @@
-import { CommunityForm } from "@/app/lib/frontend/components/form/community.form";
+import { CreateCommunityForm } from "@/app/lib/frontend/components/form/create.community.form";
 import { PageHeader } from "@/app/lib/frontend/components/page-header";
 
 export default function Page() {
@@ -13,7 +13,7 @@ export default function Page() {
           { label: "Nova Comunidade" },
         ]}
       />
-      <CommunityForm />
+      <CreateCommunityForm />
     </div>
   );
 }

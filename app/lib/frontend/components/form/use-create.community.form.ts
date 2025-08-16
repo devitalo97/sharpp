@@ -1,13 +1,18 @@
 "use client";
 
-import { useForm } from "react-hook-form";
+import { Resolver, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import z from "zod/v3";
 import { useState } from "react";
 import { toast } from "sonner";
 import { normalize } from "../../util/normalize";
+import { createOneCommunityAction } from "@/app/lib/backend/action/community.action";
+import { nanoid } from "nanoid";
 
 const communitySchema = z.object({
+  id: z.string().default(nanoid(21)),
+  tenant_id: z.string().default(nanoid(21)),
+  owner_id: z.string().default(nanoid(21)),
   name: z
     .string()
     .min(2, "Nome deve ter pelo menos 2 caracteres")
@@ -24,13 +29,16 @@ const communitySchema = z.object({
   status: z.enum(["active", "paused", "archived"]),
   visibility: z.enum(["private", "unlisted", "public"]),
   tags: z.array(z.string()).max(10, "Máximo 10 tags").optional(),
-  membersLimit: z
-    .number()
-    .min(1, "Limite mínimo é 1")
-    .max(10000, "Limite máximo é 10.000")
+  limits: z
+    .object({
+      members_qty: z
+        .number()
+        .min(1, "Limite mínimo é 1")
+        .max(10000, "Limite máximo é 10.000")
+        .optional(),
+    })
     .optional(),
-  avatarUrl: z.string().url("URL inválida").optional().or(z.literal("")),
-  coverUrl: z.string().url("URL inválida").optional().or(z.literal("")),
+  created_at: z.date().default(() => new Date()),
 });
 
 type CommunityFormSchema = z.infer<typeof communitySchema>;
@@ -38,9 +46,10 @@ type CommunityFormSchema = z.infer<typeof communitySchema>;
 export function useCommunityForm() {
   const [tags, setTags] = useState<string[]>([]);
   const [tagInput, setTagInput] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const form = useForm<CommunityFormSchema>({
-    resolver: zodResolver(communitySchema),
+    resolver: zodResolver(communitySchema) as Resolver<CommunityFormSchema>,
     defaultValues: {
       name: "",
       slug: "",
@@ -48,15 +57,9 @@ export function useCommunityForm() {
       status: "active",
       visibility: "public",
       tags: [],
-      membersLimit: undefined,
-      avatarUrl: "",
-      coverUrl: "",
+      limits: undefined,
     },
   });
-
-  const watchedName = form.watch("name");
-  const watchedAvatarUrl = form.watch("avatarUrl");
-  const watchedCoverUrl = form.watch("coverUrl");
 
   const handleNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const name = e.target.value;
@@ -83,11 +86,17 @@ export function useCommunityForm() {
     form.setValue("tags", newTags);
   };
 
-  const onSubmit = (data: CommunityFormSchema) => {
-    console.log("Dados da comunidade:", data);
-    toast.success("Comunidade criada!", {
-      description: `A comunidade "${data.name}" foi criada com sucesso.`,
-    });
+  const onSubmit = async (data: CommunityFormSchema) => {
+    setIsSubmitting(true);
+    try {
+      toast.loading("Criando comunidade...");
+      await createOneCommunityAction(data);
+      toast.success(`A comunidade "${data.name}" foi criada com sucesso.`);
+    } catch (error) {
+      toast.error("Ocorreu um erro ao criar a comunidade.");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
   return {
     form,
@@ -98,8 +107,6 @@ export function useCommunityForm() {
     tags,
     tagInput,
     setTagInput,
-    watchedName,
-    watchedAvatarUrl,
-    watchedCoverUrl,
+    isSubmitting,
   };
 }

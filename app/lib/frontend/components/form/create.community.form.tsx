@@ -20,13 +20,12 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
-import { Upload, X, Users, Eye, Settings, Tag } from "lucide-react";
-import { useCommunityForm } from "./use-community.form";
+import { X, Users, Eye, Settings, Tag, Save } from "lucide-react";
+import { useCommunityForm } from "./use-create.community.form";
 
-export function CommunityForm() {
+export function CreateCommunityForm() {
   const {
     form,
     handleNameChange,
@@ -36,9 +35,7 @@ export function CommunityForm() {
     tags,
     tagInput,
     setTagInput,
-    watchedName,
-    watchedAvatarUrl,
-    watchedCoverUrl,
+    isSubmitting,
   } = useCommunityForm();
   return (
     <Card className="w-3xl">
@@ -155,14 +152,16 @@ export function CommunityForm() {
                   id="membersLimit"
                   type="number"
                   placeholder="Ex: 1000"
-                  {...form.register("membersLimit", { valueAsNumber: true })}
+                  {...form.register("limits.members_qty", {
+                    valueAsNumber: true,
+                  })}
                 />
                 <p className="text-sm text-muted-foreground">
                   Deixe vazio para ilimitado
                 </p>
-                {form.formState.errors.membersLimit && (
+                {form.formState.errors?.limits?.members_qty && (
                   <p className="text-sm text-destructive">
-                    {form.formState.errors.membersLimit.message}
+                    {form.formState.errors?.limits?.members_qty.message}
                   </p>
                 )}
               </div>
@@ -223,86 +222,27 @@ export function CommunityForm() {
 
           <Separator />
 
-          {/* Imagens */}
-          <div className="space-y-4">
-            <h3 className="text-lg font-semibold flex items-center gap-2">
-              <Upload className="h-5 w-5" />
-              Imagens
-            </h3>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="avatarUrl">Avatar da Comunidade</Label>
-                <div className="space-y-3">
-                  <Input
-                    id="avatarUrl"
-                    placeholder="https://exemplo.com/avatar.jpg"
-                    {...form.register("avatarUrl")}
-                  />
-                  {watchedAvatarUrl && (
-                    <div className="flex items-center gap-3">
-                      <Avatar className="h-12 w-12">
-                        <AvatarImage
-                          src={watchedAvatarUrl || "/placeholder.svg"}
-                        />
-                        <AvatarFallback>
-                          {watchedName?.charAt(0)?.toUpperCase() || "C"}
-                        </AvatarFallback>
-                      </Avatar>
-                      <span className="text-sm text-muted-foreground">
-                        Preview
-                      </span>
-                    </div>
-                  )}
-                </div>
-                {form.formState.errors.avatarUrl && (
-                  <p className="text-sm text-destructive">
-                    {form.formState.errors.avatarUrl.message}
-                  </p>
-                )}
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="coverUrl">Imagem de Capa</Label>
-                <div className="space-y-3">
-                  <Input
-                    id="coverUrl"
-                    placeholder="https://exemplo.com/capa.jpg"
-                    {...form.register("coverUrl")}
-                  />
-                  {watchedCoverUrl && (
-                    <div className="space-y-2">
-                      <div className="aspect-video w-full overflow-hidden rounded-md border bg-muted">
-                        <img
-                          src={watchedCoverUrl || "/placeholder.svg"}
-                          alt="Preview da capa"
-                          className="h-full w-full object-cover"
-                        />
-                      </div>
-                      <span className="text-sm text-muted-foreground">
-                        Preview da capa
-                      </span>
-                    </div>
-                  )}
-                </div>
-                {form.formState.errors.coverUrl && (
-                  <p className="text-sm text-destructive">
-                    {form.formState.errors.coverUrl.message}
-                  </p>
-                )}
-              </div>
-            </div>
-          </div>
-
-          <Separator />
-
           {/* Botões de Ação */}
           <div className="flex justify-end gap-3">
             <Button type="button" variant="outline">
               Cancelar
             </Button>
-            <Button type="submit" className="min-w-[120px]">
-              Criar minha nova comunidade
+            <Button
+              type="submit"
+              disabled={isSubmitting}
+              className="min-w-32 ml-auto"
+            >
+              {isSubmitting ? (
+                <>
+                  <div className="animate-spin rounded-full h-4 w-4 border-2 border-primary-foreground border-t-transparent mr-2" />
+                  Criando...
+                </>
+              ) : (
+                <>
+                  <Save className="h-4 w-4 mr-2" />
+                  Criar minha nova comunidade
+                </>
+              )}
             </Button>
           </div>
         </form>

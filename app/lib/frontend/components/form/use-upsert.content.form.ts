@@ -405,15 +405,15 @@ export function useContentUpsertForm({
         medias: data.medias.map(({ upload, file, ...media }) => media),
       };
 
+      toast.loading(
+        isEditMode ? "Salvando alterações..." : "Criando conteúdo..."
+      );
+
       if (isEditMode) {
         await updateOneContentAction(contentId, contentData);
       } else {
         await createOneContentAction({ ...contentData, id: contentId });
       }
-
-      toast.loading(
-        isEditMode ? "Salvando alterações..." : "Criando conteúdo..."
-      );
 
       toast.success(
         isEditMode

@@ -35,7 +35,7 @@ export interface Community {
   owner_id: string;
 
   created_at: Date;
-  updated_at: Date;
+  updated_at?: Date;
   archived_at?: Date | null;
   deleted_at?: Date | null;
 

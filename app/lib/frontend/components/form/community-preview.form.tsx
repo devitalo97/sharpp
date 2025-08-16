@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Users, Settings, Shield, CheckCircle } from "lucide-react";
 import { CommunitySettings } from "./community-settings.form";
-import { CommunityFormSchema } from "./use-community.form";
+import { CommunityFormSchema } from "./use-create.community.form";
 import { MemberFormSchema } from "./use-member.form";
 
 interface CommunityPreviewProps {
