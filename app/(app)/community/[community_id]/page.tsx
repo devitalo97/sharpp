@@ -42,6 +42,8 @@ import {
   UserPlus,
   ExternalLink,
 } from "lucide-react";
+import { findOneByIdCommunityAction } from "@/app/lib/backend/action/community.action";
+import { notFound } from "next/navigation";
 
 type CommunityStatus = "active" | "paused" | "archived";
 type CommunityVisibility = "private" | "unlisted" | "public";
@@ -250,12 +252,18 @@ function getRoleLabel(role: string) {
   }
 }
 
-export default function CommunityPage({
+export default async function CommunityPage({
   params,
 }: {
   params: { community_id: string };
 }) {
-  const community = mockCommunity;
+  const { community_id } = params;
+
+  const community = await findOneByIdCommunityAction(community_id);
+
+  if (!community) {
+    notFound();
+  }
   const stats = mockStats;
   const recentContent = mockRecentContent;
   const members = mockMembers;
@@ -521,7 +529,9 @@ export default function CommunityPage({
                 <Calendar className="h-4 w-4 text-muted-foreground" />
                 <div className="text-sm">
                   <span className="font-medium">Última atualização:</span>{" "}
-                  {formatDate(community.updated_at)}
+                  {community.updated_at
+                    ? formatDate(community?.updated_at)
+                    : "--"}
                 </div>
               </div>
               <div className="flex items-center gap-3">

@@ -1,43 +1,35 @@
 export type CommunityStatus = "active" | "paused" | "archived";
-export type CommunityVisibility = "private" | "unlisted" | "public";
-export type CommunityPlan = "free" | "pro" | "vip";
+export type CommunityVisibility = "private" | "public";
+export type CommunityLanguage =
+  | "en-US" // Inglês (Estados Unidos)
+  | "pt-BR" // Português (Brasil)
+  | "es-ES" // Espanhol (Espanha)
+  | "fr-FR" // Francês (França)
+  | "de-DE"; // Alemão (Alemanha)
 
 export interface CommunityLimits {
   members_qty?: number;
 }
 
-export interface CommunityAudit {
-  created_by?: string;
-  updated_by?: string;
-  archived_by?: string;
-  deleted_by?: string;
-}
-
 export interface Community {
   id: string;
-
   tenant_id: string;
+  owner_id: string;
 
   name: string;
   slug: string;
   description?: string;
-
-  avatar_url?: string;
-  cover_url?: string;
-
+  language: CommunityLanguage;
+  timezone: string; // IANA timezone, ex: "America/Sao_Paulo" Intl.DateTimeFormat
   status: CommunityStatus; // "active" | "paused" | "archived"
-  visibility: CommunityVisibility; // "private" | "unlisted" | "public"
-
   tags?: string[];
-
   limits?: CommunityLimits;
 
-  owner_id: string;
+  visibility: CommunityVisibility;
+  enable_notifications: boolean;
 
   created_at: Date;
   updated_at?: Date;
   archived_at?: Date | null;
   deleted_at?: Date | null;
-
-  audit?: CommunityAudit;
 }
