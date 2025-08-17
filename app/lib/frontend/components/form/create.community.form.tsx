@@ -24,6 +24,7 @@ import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { X, Users, Eye, Settings, Tag, Save } from "lucide-react";
 import { useCommunityForm } from "./use-create.community.form";
+import { normalize } from "path";
 
 export function CreateCommunityForm() {
   const {
@@ -60,7 +61,12 @@ export function CreateCommunityForm() {
                 <Input
                   id="name"
                   placeholder="Ex: Desenvolvedores React"
-                  {...form.register("name")}
+                  {...form.register("name", {
+                    onChange: (e) => {
+                      form.setValue("name", e.target.value);
+                      form.setValue("slug", normalize(e.target.value));
+                    },
+                  })}
                   onChange={handleNameChange}
                 />
                 {form.formState.errors.name && (
@@ -75,7 +81,10 @@ export function CreateCommunityForm() {
                 <Input
                   id="slug"
                   placeholder="desenvolvedores-react"
-                  {...form.register("slug")}
+                  {...form.register("slug", {
+                    onChange: (e) =>
+                      form.setValue("slug", normalize(e.target.value)),
+                  })}
                 />
                 <p className="text-sm text-muted-foreground">
                   URL amigável para sua comunidade
@@ -124,10 +133,7 @@ export function CreateCommunityForm() {
                 </Label>
                 <Select
                   onValueChange={(value) =>
-                    form.setValue(
-                      "visibility",
-                      value as "private" | "unlisted" | "public"
-                    )
+                    form.setValue("visibility", value as "private" | "public")
                   }
                 >
                   <SelectTrigger>

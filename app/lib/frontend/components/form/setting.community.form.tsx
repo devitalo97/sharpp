@@ -7,7 +7,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Bell, Globe, Lock, Settings } from "lucide-react";
+import { Bell, Globe, Lock, Save, Settings } from "lucide-react";
 import { Community } from "@/app/lib/backend/domain/entity/community.entity";
 import { Label } from "../ui/label";
 import { Input } from "../ui/input";
@@ -20,14 +20,21 @@ import {
   SelectValue,
 } from "../ui/select";
 import { Switch } from "../ui/switch";
+import { Button } from "../ui/button";
+import { useSettingCommunityForm } from "./use-setting.community.form";
+import { Controller } from "react-hook-form";
+import { normalize } from "../../util/normalize";
 
 interface CommunitySettingsProps {
   community: Community;
 }
 
 export function SettingCommunityForm({ community }: CommunitySettingsProps) {
+  const { form, isSubmitting, onSubmit } = useSettingCommunityForm({
+    defaultValues: community,
+  });
   return (
-    <>
+    <form className="space-y-6" onSubmit={form.handleSubmit(onSubmit)}>
       {/* Basic Information */}
       <Card>
         <CardHeader>
@@ -43,51 +50,86 @@ export function SettingCommunityForm({ community }: CommunitySettingsProps) {
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">
               <Label htmlFor="name">Nome da Comunidade</Label>
-              <Input id="name" defaultValue={community.name} />
+              <Input
+                id="name"
+                {...form.register("name", {
+                  onChange: (e) => {
+                    form.setValue("name", e.target.value);
+                    form.setValue("slug", normalize(e.target.value));
+                  },
+                })}
+              />
             </div>
             <div className="space-y-2">
               <Label htmlFor="slug">URL da Comunidade</Label>
-              <Input id="slug" defaultValue={community.slug} />
+              <Input
+                id="slug"
+                {...form.register("slug", {
+                  onChange: (e) => {
+                    form.setValue("slug", normalize(e.target.value));
+                  },
+                })}
+              />
             </div>
           </div>
           <div className="space-y-2">
             <Label htmlFor="description">Descrição</Label>
             <Textarea
               id="description"
-              defaultValue={community.description}
+              {...form.register("description")}
               rows={3}
             />
           </div>
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">
               <Label htmlFor="language">Idioma</Label>
-              <Select defaultValue={community.language}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="pt-BR">Português (Brasil)</SelectItem>
-                  <SelectItem value="en-US">English (US)</SelectItem>
-                  <SelectItem value="es-ES">Español</SelectItem>
-                </SelectContent>
-              </Select>
+              <Controller
+                control={form.control}
+                name="language"
+                render={({ field }) => (
+                  <Select
+                    defaultValue={field.value}
+                    onValueChange={field.onChange}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="pt-BR">Português (Brasil)</SelectItem>
+                      <SelectItem value="en-US">English (US)</SelectItem>
+                      <SelectItem value="es-ES">Español</SelectItem>
+                    </SelectContent>
+                  </Select>
+                )}
+              />
             </div>
             <div className="space-y-2">
               <Label htmlFor="timezone">Fuso Horário</Label>
-              <Select defaultValue={community.timezone}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="America/Sao_Paulo">
-                    São Paulo (GMT-3)
-                  </SelectItem>
-                  <SelectItem value="America/New_York">
-                    New York (GMT-5)
-                  </SelectItem>
-                  <SelectItem value="Europe/London">London (GMT+0)</SelectItem>
-                </SelectContent>
-              </Select>
+              <Controller
+                control={form.control}
+                name="timezone"
+                render={({ field }) => (
+                  <Select
+                    defaultValue={field.value}
+                    onValueChange={field.onChange}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="America/Sao_Paulo">
+                        São Paulo (GMT-3)
+                      </SelectItem>
+                      <SelectItem value="America/New_York">
+                        New York (GMT-5)
+                      </SelectItem>
+                      <SelectItem value="Europe/London">
+                        London (GMT+0)
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                )}
+              />
             </div>
           </div>
         </CardContent>
@@ -107,35 +149,44 @@ export function SettingCommunityForm({ community }: CommunitySettingsProps) {
         <CardContent className="space-y-6">
           <div className="space-y-2">
             <Label htmlFor="visibility">Visibilidade da Comunidade</Label>
-            <Select defaultValue={community.visibility}>
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="public">
-                  <div className="flex items-center gap-2">
-                    <Globe className="h-4 w-4" />
-                    <div className="flex flex-col items-start">
-                      <div>Pública</div>
-                      <div className="text-xs text-muted-foreground">
-                        Qualquer pessoa pode ver
+            <Controller
+              name="visibility"
+              control={form.control}
+              render={({ field }) => (
+                <Select
+                  defaultValue={field.value}
+                  onValueChange={field.onChange}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="public">
+                      <div className="flex items-center gap-2">
+                        <Globe className="h-4 w-4" />
+                        <div className="flex flex-col items-start">
+                          <div>Pública</div>
+                          <div className="text-xs text-muted-foreground">
+                            Qualquer pessoa pode ver
+                          </div>
+                        </div>
                       </div>
-                    </div>
-                  </div>
-                </SelectItem>
-                <SelectItem value="private">
-                  <div className="flex items-center gap-2">
-                    <Lock className="h-4 w-4" />
-                    <div className="flex flex-col items-start">
-                      <div>Privada</div>
-                      <div className="text-xs text-muted-foreground">
-                        Apenas membros podem ver
+                    </SelectItem>
+                    <SelectItem value="private">
+                      <div className="flex items-center gap-2">
+                        <Lock className="h-4 w-4" />
+                        <div className="flex flex-col items-start">
+                          <div>Privada</div>
+                          <div className="text-xs text-muted-foreground">
+                            Apenas membros podem ver
+                          </div>
+                        </div>
                       </div>
-                    </div>
-                  </div>
-                </SelectItem>
-              </SelectContent>
-            </Select>
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+              )}
+            />
           </div>
 
           {/* <div className="space-y-2">
@@ -256,10 +307,37 @@ export function SettingCommunityForm({ community }: CommunitySettingsProps) {
                 Enviar notificações para membros
               </p>
             </div>
-            <Switch defaultChecked={community.enable_notifications} />
+            <Controller
+              name="enable_notifications"
+              control={form.control}
+              render={({ field }) => (
+                <Switch
+                  checked={field.value}
+                  onCheckedChange={field.onChange}
+                />
+              )}
+            />
           </div>
         </CardContent>
       </Card>
-    </>
+
+      <Button
+        type="submit"
+        disabled={isSubmitting}
+        className="min-w-32 ml-auto"
+      >
+        {isSubmitting ? (
+          <>
+            <div className="animate-spin rounded-full h-4 w-4 border-2 border-primary-foreground border-t-transparent mr-2" />
+            Salvando...
+          </>
+        ) : (
+          <>
+            <Save className="h-4 w-4 mr-2" />
+            Salvar alterações
+          </>
+        )}
+      </Button>
+    </form>
   );
 }

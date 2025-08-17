@@ -27,7 +27,7 @@ const communitySchema = z.object({
     ),
   description: z.string().max(500, "Descrição muito longa").optional(),
   status: z.enum(["active", "paused", "archived"]),
-  visibility: z.enum(["private", "unlisted", "public"]),
+  visibility: z.enum(["private", "public"]),
   tags: z.array(z.string()).max(10, "Máximo 10 tags").optional(),
   limits: z
     .object({
@@ -39,6 +39,11 @@ const communitySchema = z.object({
     })
     .optional(),
   created_at: z.date().default(() => new Date()),
+  language: z.string().default(() => navigator.language || "pt-BR"),
+  timezone: z
+    .string()
+    .default(() => Intl.DateTimeFormat().resolvedOptions().timeZone),
+  enable_notifications: z.boolean().default(false),
 });
 
 type CommunityFormSchema = z.infer<typeof communitySchema>;
