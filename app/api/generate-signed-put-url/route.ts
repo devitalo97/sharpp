@@ -21,7 +21,7 @@ export async function POST(request: NextRequest) {
     // Validações básicas
     if (!key || !contentType) {
       return NextResponse.json(
-        { error: "Parâmetros obrigatórios: key, contentType, contentLength" },
+        { error: "Parâmetros obrigatórios: key, contentType" },
         { status: 400 }
       );
     }

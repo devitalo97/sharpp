@@ -5,6 +5,7 @@ export interface Media {
   name: string;
   description?: string;
   type: string; // ex: image/png, video/mp4, application/pdf
+  ext: string; // ex: .ts, .tsx, .png
   size: number;
   metadata?: {
     width?: number;

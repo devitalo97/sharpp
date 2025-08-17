@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useMemo, useState } from "react";
 import type React from "react";
 
 import { useForm, useFieldArray, type Resolver } from "react-hook-form";
@@ -10,7 +10,7 @@ import { nanoid } from "nanoid";
 import { createManyContentAction } from "@/app/lib/backend/action/content.action";
 import { updateOneContentAction } from "@/app/lib/backend/action/content.action";
 import type { Content } from "@/app/lib/backend/domain/entity/content.entity";
-import { extension } from "mime-types";
+import { resolveMimeAndExt } from "../../util/file-mime";
 
 const mimeTypeRegex = /^[a-z]+\/[a-z0-9.+-]+$/i;
 const hexRegex = /^[A-Fa-f0-9]+$/;
@@ -26,6 +26,7 @@ export const mediaSchema = z.object({
     .string()
     .regex(mimeTypeRegex, "type deve ser um MIME válido (ex.: image/png)"),
   size: z.number().int().nonnegative().describe("tamanho em bytes"),
+  ext: z.string(),
   metadata: z
     .object({
       width: z.number().int().positive().optional(),
@@ -89,7 +90,8 @@ export function useContentUpsertForm({
   communityId,
 }: UseContentUpsertFormProps) {
   const isEditMode = !!initialData;
-  const contentId = initialData?.id || nanoid(21);
+  const contentId = useMemo(() => initialData?.id || nanoid(21), [initialData]);
+
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [newTag, setNewTag] = useState("");
   const [activeTab, setActiveTab] = useState<"content" | "media" | "settings">(
@@ -144,22 +146,9 @@ export function useContentUpsertForm({
     keyName: "id",
   });
 
-  const generateS3Key = (
-    file: File,
-    communityId: string,
-    contentId: string,
-    mediaId: string
-  ): string => {
-    const ext =
-      extension(file.type) ||
-      file.name.split(".").pop()?.toLowerCase() ||
-      "bin";
-    return `${communityId}/${contentId}/${mediaId}.${ext}`;
-  };
-
   const getSignedUploadUrl = async (
-    file: File,
-    s3Key: string
+    contentType: string,
+    key: string
   ): Promise<string> => {
     const response = await fetch("/api/generate-signed-put-url", {
       method: "POST",
@@ -167,8 +156,8 @@ export function useContentUpsertForm({
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        key: s3Key,
-        contentType: file.type,
+        key,
+        contentType,
       }),
     });
 
@@ -216,20 +205,23 @@ export function useContentUpsertForm({
     });
   };
 
-  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileSelect = async (
+    event: React.ChangeEvent<HTMLInputElement>
+  ) => {
     const files = Array.from(event.target.files || []);
-    addFiles(files);
+    await addFiles(files);
     event.target.value = "";
   };
 
-  const handleFileDrop = (files: File[]) => {
-    addFiles(files);
+  const handleFileDrop = async (files: File[]) => {
+    await addFiles(files);
   };
 
-  const addFiles = (files: File[]) => {
-    files.forEach((file) => {
+  const addFiles = async (files: File[]) => {
+    for (const file of files) {
       const mediaId = nanoid(21);
-      const s3Key = generateS3Key(file, communityId, contentId, mediaId);
+      const { type, ext } = await resolveMimeAndExt(file);
+      const s3Key = `${communityId}/${contentId}/${mediaId}.${ext}`;
 
       append({
         id: mediaId,
@@ -240,7 +232,8 @@ export function useContentUpsertForm({
         description: "",
         tags: [],
         custom_attributes: {},
-        type: file.type,
+        ext,
+        type,
         size: file.size,
         storage: {
           key: s3Key,
@@ -252,7 +245,7 @@ export function useContentUpsertForm({
         },
         created_at: new Date(),
       });
-    });
+    }
   };
 
   const addTag = (mediaIndex: number) => (tag: string) => {
@@ -305,7 +298,7 @@ export function useContentUpsertForm({
         id: `upload-${mediaIndex}`,
       });
 
-      const signedUrl = await getSignedUploadUrl(media.file, media.storage.key);
+      const signedUrl = await getSignedUploadUrl(media.type, media.storage.key);
 
       await uploadFile(media.file, signedUrl, (progress) => {
         update(mediaIndex, {

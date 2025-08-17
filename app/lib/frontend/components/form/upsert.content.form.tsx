@@ -237,7 +237,7 @@ export function ContentUpsertForm({
                     id="file-input"
                     type="file"
                     multiple
-                    accept="image/*,video/*,audio/*,.pdf,.doc,.docx"
+                    accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.tsx,.ts"
                     onChange={handleFileSelect}
                     className="hidden"
                   />
