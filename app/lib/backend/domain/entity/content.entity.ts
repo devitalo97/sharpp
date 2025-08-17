@@ -11,6 +11,7 @@ export interface Content {
 
   status: "draft" | "archived" | "published";
 
+  published_at?: Date;
   scheduled_at?: Date;
   expires_at?: Date;
   created_at: Date;

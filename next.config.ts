@@ -6,7 +6,7 @@ const nextConfig: NextConfig = {
     remotePatterns: [
       {
         protocol: "https",
-        hostname: "club-hair-pro.s3.us-east-1.amazonaws.com",
+        hostname: "sharpp-bucket.s3.us-east-1.amazonaws.com",
         port: "",
         pathname: "/**",
       },

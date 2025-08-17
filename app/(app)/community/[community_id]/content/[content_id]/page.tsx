@@ -30,7 +30,7 @@ interface PageProps {
 }
 
 export default async function ContentDisplayPage({ params }: PageProps) {
-  const { community_id, content_id } = params;
+  const { community_id, content_id } = await params;
 
   try {
     const content = await findOneByIdContentAction(content_id);
