@@ -1,12 +1,15 @@
 "use client";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
+import type React from "react";
+
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { Separator } from "@/components/ui/separator";
+import { Switch } from "@/components/ui/switch";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Trash2,
   Upload,
@@ -16,43 +19,41 @@ import {
   ImageIcon,
   Video,
   Music,
+  Link2,
   CloudUpload,
   RefreshCcw,
   Save,
+  Settings,
+  Eye,
+  EyeOff,
 } from "lucide-react";
-import { toast } from "sonner";
-import { Content } from "@/app/lib/backend/domain/entity/content.entity";
+import { useState, useCallback } from "react";
 import { useContentUpsertForm } from "./use-upsert.content.form";
-import { normalize } from "path";
+import { Content } from "@/app/lib/backend/domain/entity/content.entity";
+import { normalize } from "../../util/normalize";
 
 interface ContentUpsertFormProps {
   initialData?: Content;
   communityId: string;
-  onCancel?: () => void;
-  mode?: "create" | "edit";
 }
 
 export function ContentUpsertForm({
   initialData,
   communityId,
-  onCancel,
-  mode = "create",
 }: ContentUpsertFormProps) {
   const {
     form,
     fields,
     isSubmitting,
+    isEditMode,
+    activeTab,
+    setActiveTab,
     newTag,
     setNewTag,
-    getNewAttributeKey,
-    getNewAttributeValue,
-    setNewAttributeKey,
-    setNewAttributeValue,
     handleFileSelect,
+    handleFileDrop,
     addTag,
     removeTag,
-    addCustomAttribute,
-    removeCustomAttribute,
     uploadMedia,
     uploadAllMedias,
     removeMedia,
@@ -62,7 +63,7 @@ export function ContentUpsertForm({
     communityId,
   });
 
-  const isEditMode = mode === "edit" || !!initialData;
+  const [isDragOver, setIsDragOver] = useState(false);
 
   const getFileIcon = (fileOrType: File | string) => {
     const type = typeof fileOrType === "string" ? fileOrType : fileOrType.type;
@@ -72,433 +73,437 @@ export function ContentUpsertForm({
     return <FileText className="h-4 w-4" />;
   };
 
+  const handleDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragOver(true);
+  }, []);
+
+  const handleDragLeave = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragOver(false);
+  }, []);
+
+  const handleDrop = useCallback(
+    (e: React.DragEvent) => {
+      e.preventDefault();
+      setIsDragOver(false);
+      const files = Array.from(e.dataTransfer.files);
+      handleFileDrop(files);
+    },
+    [handleFileDrop]
+  );
+
   return (
-    <Card className="border max-w-4xl">
-      <CardContent className="p-6">
-        <form
-          onSubmit={form.handleSubmit(onSubmit, (e) => console.log(e))}
-          className="space-y-8"
+    <div className="w-3xl">
+      <div className="flex items-center justify-between mb-6">
+        <div className="space-y-1">
+          <h1 className="text-2xl font-semibold tracking-tight">
+            {isEditMode ? "Editar Conteúdo" : "Criar Conteúdo"}
+          </h1>
+          <p className="text-sm text-muted-foreground">
+            {isEditMode
+              ? "Atualize as informações do seu conteúdo"
+              : "Crie um novo conteúdo para sua comunidade"}
+          </p>
+        </div>
+        <div className="flex items-center gap-2">
+          {form.watch("status") === "draft" ? (
+            <Badge variant="secondary" className="gap-1">
+              <EyeOff className="h-3 w-3" />
+              Rascunho
+            </Badge>
+          ) : (
+            <Badge className="gap-1">
+              <Eye className="h-3 w-3" />
+              Publicado
+            </Badge>
+          )}
+        </div>
+      </div>
+
+      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+        <Tabs
+          value={activeTab}
+          onValueChange={(value) =>
+            setActiveTab(value as "content" | "media" | "settings")
+          }
+          className="w-full"
         >
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <div className="space-y-2">
-              <Label htmlFor="name" className="text-sm font-medium">
-                Nome do Conteúdo
-              </Label>
-              <Input
-                id="name"
-                {...form.register("name", {
-                  onChange: (e) => {
-                    form.setValue("name", e.target.value);
-                    form.setValue("slug", normalize(e.target.value));
-                  },
-                })}
-                placeholder="Digite o nome do conteúdo"
-                className="h-10"
-              />
-              {form.formState.errors.name && (
-                <p className="text-sm text-destructive">
-                  {form.formState.errors.name.message}
-                </p>
-              )}
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="slug">Slug (URL) *</Label>
-              <Input
-                id="slug"
-                placeholder="desenvolvedores-react"
-                {...form.register("slug", {
-                  onChange: (e) =>
-                    form.setValue("slug", normalize(e.target.value)),
-                })}
-              />
-              <p className="text-sm text-muted-foreground">
-                URL amigável para o conteúdo
-              </p>
-              {form.formState.errors.slug && (
-                <p className="text-sm text-destructive">
-                  {form.formState.errors.slug.message}
-                </p>
-              )}
-            </div>
+          <TabsList className="grid w-full grid-cols-3">
+            <TabsTrigger value="content" className="gap-2">
+              <Link2 className="h-4 w-4" />
+              Conteúdo
+            </TabsTrigger>
+            <TabsTrigger value="media" className="gap-2">
+              <CloudUpload className="h-4 w-4" />
+              Mídias ({fields.length})
+            </TabsTrigger>
+            <TabsTrigger value="settings" className="gap-2">
+              <Settings className="h-4 w-4" />
+              Configurações
+            </TabsTrigger>
+          </TabsList>
 
-            <div className="space-y-2 lg:col-span-2">
-              <Label htmlFor="description" className="text-sm font-medium">
-                Descrição do Conteúdo
-              </Label>
-              <Textarea
-                id="description"
-                {...form.register("description")}
-                placeholder="Descrição opcional do conteúdo"
-                rows={3}
-                className="resize-none"
-              />
-            </div>
-          </div>
-
-          <Separator />
-
-          <div className="space-y-6">
-            <div className="flex items-center justify-between">
-              <div className="space-y-1">
-                <Label className="text-base font-medium flex items-center gap-2">
-                  <CloudUpload className="h-4 w-4" />
-                  Mídias Digitais
-                </Label>
-                <p className="text-sm text-muted-foreground">
-                  {isEditMode ? "Gerencie" : "Adicione"} arquivos de imagem,
-                  vídeo, áudio ou documentos
-                </p>
-              </div>
-              <div className="flex gap-2">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => document.getElementById("file-input")?.click()}
-                >
-                  <Plus className="h-4 w-4 mr-2" />
-                  Adicionar Arquivos
-                </Button>
-                {fields.some((media) => media.upload?.status === "pending") && (
-                  <Button type="button" onClick={uploadAllMedias}>
-                    <Upload className="h-4 w-4 mr-2" />
-                    Upload Pendentes
-                  </Button>
-                )}
-              </div>
-            </div>
-
-            <input
-              id="file-input"
-              type="file"
-              multiple
-              accept="image/*,video/*,audio/*,.pdf,.doc,.docx"
-              onChange={handleFileSelect}
-              className="hidden"
-            />
-
-            {Array.isArray(form.formState.errors.medias) &&
-              form.formState.errors.medias.length > 0 && (
-                <div className="p-3 rounded-md bg-destructive/10 border border-destructive/20 mb-2">
-                  {form.formState.errors.medias.map((mediaError, index) => (
-                    <div key={index} className="mb-2">
-                      <p className="text-sm text-destructive font-bold">
-                        Erros na mídia {index + 1}:
+          <TabsContent value="content" className="space-y-6 mt-6">
+            <Card>
+              <CardContent className="p-6 space-y-6">
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  <div className="space-y-2">
+                    <Label htmlFor="name">Nome do Conteúdo</Label>
+                    <Input
+                      id="name"
+                      {...form.register("name", {
+                        onChange: (e) => {
+                          form.setValue("name", e.target.value);
+                          form.setValue("slug", normalize(e.target.value));
+                        },
+                      })}
+                      placeholder="Digite o nome do conteúdo"
+                    />
+                    {form.formState.errors.name && (
+                      <p className="text-sm text-destructive">
+                        {form.formState.errors.name.message}
                       </p>
-                      <ul className="list-disc pl-5 text-sm text-destructive">
-                        {Object.entries(mediaError ?? {}).map(
-                          ([field, err]) => {
-                            const anyErr = err as any;
-                            const message =
-                              anyErr?.message ??
-                              (Array.isArray(anyErr)
-                                ? anyErr
-                                    .map((e: any) => e?.message)
-                                    .filter(Boolean)
-                                    .join(", ")
-                                : undefined);
-
-                            return message ? (
-                              <li key={field}>
-                                {field}: {message}
-                              </li>
-                            ) : null;
-                          }
-                        )}
-                      </ul>
-                    </div>
-                  ))}
+                    )}
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="slug">Slug (URL)</Label>
+                    <Input
+                      id="slug"
+                      placeholder="conteudo-exemplo"
+                      {...form.register("slug", {
+                        onChange: (e) =>
+                          form.setValue("slug", normalize(e.target.value)),
+                      })}
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      URL amigável para o conteúdo
+                    </p>
+                    {form.formState.errors.slug && (
+                      <p className="text-sm text-destructive">
+                        {form.formState.errors.slug.message}
+                      </p>
+                    )}
+                  </div>
                 </div>
-              )}
+
+                <div className="space-y-2">
+                  <Label htmlFor="description">Descrição</Label>
+                  <Textarea
+                    id="description"
+                    {...form.register("description")}
+                    placeholder="Descreva brevemente o conteúdo..."
+                    rows={4}
+                    className="resize-none"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Uma descrição opcional que ajuda os membros a entenderem o
+                    conteúdo
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="media" className="space-y-6 mt-6">
+            <Card>
+              <CardContent className="p-6">
+                <div
+                  className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors ${
+                    isDragOver
+                      ? "border-primary bg-primary/5"
+                      : "border-muted-foreground/25"
+                  }`}
+                  onDragOver={handleDragOver}
+                  onDragLeave={handleDragLeave}
+                  onDrop={handleDrop}
+                >
+                  <CloudUpload className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                  <h3 className="text-lg font-medium mb-2">Adicionar Mídias</h3>
+                  <p className="text-sm text-muted-foreground mb-4">
+                    Arraste arquivos aqui ou clique para selecionar
+                  </p>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() =>
+                      document.getElementById("file-input")?.click()
+                    }
+                  >
+                    <Plus className="h-4 w-4 mr-2" />
+                    Selecionar Arquivos
+                  </Button>
+                  <input
+                    id="file-input"
+                    type="file"
+                    multiple
+                    accept="image/*,video/*,audio/*,.pdf,.doc,.docx"
+                    onChange={handleFileSelect}
+                    className="hidden"
+                  />
+                </div>
+
+                {fields.length > 0 && (
+                  <div className="mt-6 flex justify-between items-center">
+                    <p className="text-sm text-muted-foreground">
+                      {fields.length} arquivo{fields.length !== 1 ? "s" : ""}{" "}
+                      adicionado{fields.length !== 1 ? "s" : ""}
+                    </p>
+                    {fields.some(
+                      (media) => media.upload?.status === "pending"
+                    ) && (
+                      <Button type="button" size="sm" onClick={uploadAllMedias}>
+                        <Upload className="h-4 w-4 mr-2" />
+                        Enviar Todos
+                      </Button>
+                    )}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
 
             <div className="space-y-4">
               {fields.map((media, index) => (
-                <Card key={media.id} className="border">
-                  <div className="p-4 space-y-4">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <div className="p-2 rounded-md bg-muted">
-                          {getFileIcon(media.file || media.type)}
-                        </div>
-                        <div className="space-y-1">
-                          <h3 className="font-medium text-sm truncate max-w-xs">
-                            {media.file?.name || media.name}
-                          </h3>
-                          <div className="flex items-center gap-2">
-                            <Badge variant="secondary" className="text-xs">
-                              {(
-                                (media.file?.size || media.size) /
-                                1024 /
-                                1024
-                              ).toFixed(2)}{" "}
-                              MB
-                            </Badge>
-                            {media.upload?.status === "completed" && (
-                              <Badge className="text-xs">
-                                {media.file ? "Novo arquivo" : "Salvo"}
+                <Card key={media.id}>
+                  <CardContent className="p-4">
+                    <div className="flex items-start gap-4">
+                      <div className="p-2 rounded-lg bg-muted flex-shrink-0">
+                        {getFileIcon(media.file || media.type)}
+                      </div>
+
+                      <div className="flex-1 min-w-0 space-y-4">
+                        <div className="flex items-start justify-between">
+                          <div className="min-w-0 flex-1">
+                            <h4 className="font-medium truncate">
+                              {media.file?.name || media.name}
+                            </h4>
+                            <div className="flex items-center gap-2 mt-1">
+                              <Badge variant="secondary" className="text-xs">
+                                {(
+                                  (media.file?.size || media.size) /
+                                  1024 /
+                                  1024
+                                ).toFixed(2)}{" "}
+                                MB
                               </Badge>
-                            )}
-                            {media.upload?.status === "error" && (
-                              <>
+                              {media.upload?.status === "completed" && (
+                                <Badge variant="default" className="text-xs">
+                                  Enviado
+                                </Badge>
+                              )}
+                              {media.upload?.status === "error" && (
                                 <Badge
                                   variant="destructive"
                                   className="text-xs"
                                 >
                                   Erro
                                 </Badge>
-                                <Button
-                                  type="button"
-                                  size="sm"
-                                  variant="outline"
-                                  onClick={() => uploadMedia(index)}
-                                >
-                                  <RefreshCcw className="h-4 w-4 mr-1" />
-                                </Button>
-                              </>
+                              )}
+                            </div>
+                          </div>
+
+                          <div className="flex items-center gap-2 flex-shrink-0">
+                            {media.upload?.status === "pending" && (
+                              <Button
+                                type="button"
+                                size="sm"
+                                onClick={() => uploadMedia(index)}
+                              >
+                                <Upload className="h-4 w-4" />
+                              </Button>
                             )}
+                            {media.upload?.status === "error" && (
+                              <Button
+                                type="button"
+                                size="sm"
+                                variant="outline"
+                                onClick={() => uploadMedia(index)}
+                              >
+                                <RefreshCcw className="h-4 w-4" />
+                              </Button>
+                            )}
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              onClick={() => removeMedia(index)}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </div>
+
+                        {media.upload?.status === "uploading" && (
+                          <div className="space-y-2">
+                            <div className="flex justify-between text-sm">
+                              <span>Enviando...</span>
+                              <span>{media.upload.progress}%</span>
+                            </div>
+                            <Progress
+                              value={media.upload.progress}
+                              className="h-2"
+                            />
+                          </div>
+                        )}
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div className="space-y-2">
+                            <Label className="text-sm">Título</Label>
+                            <Input
+                              {...form.register(`medias.${index}.name`)}
+                              placeholder="Título da mídia"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label className="text-sm">Descrição</Label>
+                            <Input
+                              {...form.register(`medias.${index}.description`)}
+                              placeholder="Descrição opcional"
+                            />
+                          </div>
+                        </div>
+
+                        <div className="space-y-3">
+                          <Label className="text-sm">Tags</Label>
+                          {media.tags && media.tags.length > 0 && (
+                            <div className="flex flex-wrap gap-1">
+                              {media.tags.map((tag, tagIndex) => (
+                                <Badge
+                                  key={tagIndex}
+                                  variant="secondary"
+                                  className="text-xs gap-1"
+                                >
+                                  {tag}
+                                  <X
+                                    className="h-3 w-3 cursor-pointer hover:text-destructive"
+                                    onClick={() => removeTag(index)(tagIndex)}
+                                  />
+                                </Badge>
+                              ))}
+                            </div>
+                          )}
+                          <div className="flex gap-2">
+                            <Input
+                              value={newTag}
+                              onChange={(e) => setNewTag(e.target.value)}
+                              placeholder="Adicionar tag"
+                              onKeyPress={(e) => {
+                                if (e.key === "Enter") {
+                                  e.preventDefault();
+                                  if (newTag.trim()) {
+                                    addTag(index)(newTag.trim());
+                                    setNewTag("");
+                                  }
+                                }
+                              }}
+                            />
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              onClick={() => {
+                                if (newTag.trim()) {
+                                  addTag(index)(newTag.trim());
+                                  setNewTag("");
+                                }
+                              }}
+                              disabled={!newTag.trim()}
+                            >
+                              <Plus className="h-4 w-4" />
+                            </Button>
                           </div>
                         </div>
                       </div>
-                      <div className="flex items-center gap-2">
-                        {media.upload?.status === "pending" && (
-                          <Button
-                            type="button"
-                            size="sm"
-                            onClick={() => uploadMedia(index)}
-                          >
-                            <Upload className="h-4 w-4 mr-1" />
-                            Upload
-                          </Button>
-                        )}
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          onClick={() => removeMedia(index)}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
                     </div>
-
-                    {media.upload?.status === "uploading" && (
-                      <div className="space-y-2 p-3 rounded-md bg-muted">
-                        <div className="flex items-center justify-between">
-                          <span className="text-sm font-medium">
-                            Enviando arquivo...
-                          </span>
-                          <span className="text-sm text-muted-foreground">
-                            {media.upload.progress}%
-                          </span>
-                        </div>
-                        <Progress
-                          value={media.upload.progress}
-                          className="h-2"
-                        />
-                      </div>
-                    )}
-
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label className="text-sm font-medium">
-                          Título da Mídia
-                        </Label>
-                        <Input
-                          {...form.register(`medias.${index}.name`)}
-                          placeholder="Título da mídia"
-                          className="h-9"
-                        />
-                        {form.formState.errors.medias?.[index]?.name && (
-                          <p className="text-sm text-destructive">
-                            {form.formState.errors.medias[index]?.name?.message}
-                          </p>
-                        )}
-                      </div>
-                      <div className="space-y-2">
-                        <Label className="text-sm font-medium">Descrição</Label>
-                        <Input
-                          {...form.register(`medias.${index}.description`)}
-                          placeholder="Descrição da mídia"
-                          className="h-9"
-                        />
-                      </div>
-                    </div>
-
-                    <div className="space-y-3">
-                      <Label className="text-sm font-medium">Tags</Label>
-
-                      {media.tags && media.tags.length > 0 && (
-                        <div className="flex flex-wrap gap-2">
-                          {media.tags.map((tag, tagIndex) => (
-                            <Badge
-                              key={tagIndex}
-                              variant="secondary"
-                              className="flex items-center gap-1"
-                            >
-                              {tag}
-                              <X
-                                className="h-3 w-3 cursor-pointer hover:text-destructive"
-                                onClick={() => removeTag(index, tagIndex)}
-                              />
-                            </Badge>
-                          ))}
-                        </div>
-                      )}
-
-                      <div className="flex gap-2">
-                        <Input
-                          value={newTag}
-                          onChange={(e) => setNewTag(e.target.value)}
-                          placeholder="Digite uma nova tag"
-                          className="flex-1 h-9"
-                          onKeyPress={(e) => {
-                            if (e.key === "Enter") {
-                              e.preventDefault();
-                              if (newTag.trim()) {
-                                addTag(index);
-                                toast.success(`Tag "${newTag}" adicionada!`);
-                              }
-                            }
-                          }}
-                        />
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          onClick={() => {
-                            if (newTag.trim()) {
-                              addTag(index);
-                              toast.success(`Tag "${newTag}" adicionada!`);
-                            }
-                          }}
-                          disabled={!newTag.trim()}
-                        >
-                          <Plus className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </div>
-
-                    <Separator />
-
-                    <div className="space-y-3">
-                      <Label className="text-sm font-medium">
-                        Atributos Customizados
-                      </Label>
-
-                      <div className="grid grid-cols-1 sm:grid-cols-[1fr_1fr_auto] gap-2">
-                        <Input
-                          value={getNewAttributeKey(index)}
-                          onChange={(e) =>
-                            setNewAttributeKey(index)(e.target.value)
-                          }
-                          placeholder="Nome do atributo"
-                          className="h-9"
-                        />
-                        <Input
-                          value={getNewAttributeValue(index)}
-                          onChange={(e) =>
-                            setNewAttributeValue(index)(e.target.value)
-                          }
-                          placeholder="Valor do atributo"
-                          className="h-9"
-                          onKeyDown={(e) => {
-                            if (e.key === "Enter") {
-                              e.preventDefault();
-                              if (
-                                getNewAttributeKey(index).trim() &&
-                                getNewAttributeValue(index).trim()
-                              ) {
-                                addCustomAttribute(index);
-                                toast.success(
-                                  `Atributo "${getNewAttributeKey(
-                                    index
-                                  )}" adicionado!`
-                                );
-                              }
-                            }
-                          }}
-                        />
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          className="h-9 bg-transparent"
-                          onClick={() => {
-                            if (
-                              getNewAttributeKey(index).trim() &&
-                              getNewAttributeValue(index).trim()
-                            ) {
-                              addCustomAttribute(index);
-                              toast.success(
-                                `Atributo "${getNewAttributeKey(
-                                  index
-                                )}" adicionado!`
-                              );
-                            } else {
-                              toast.error(
-                                "Preencha o nome e valor do atributo."
-                              );
-                            }
-                          }}
-                          disabled={
-                            !getNewAttributeKey(index).trim() ||
-                            !getNewAttributeValue(index).trim()
-                          }
-                        >
-                          <Plus className="h-4 w-4 mr-2" />
-                          Adicionar
-                        </Button>
-                      </div>
-
-                      {Object.entries(media.custom_attributes || {}).length >
-                        0 && (
-                        <div className="flex items-center gap-2 overflow-x-auto rounded-md border bg-background px-2 py-2">
-                          {Object.entries(media.custom_attributes || {}).map(
-                            ([key, value]) => (
-                              <button
-                                key={key}
-                                type="button"
-                                onClick={() => {
-                                  removeCustomAttribute(index, key);
-                                  toast.success(`Atributo "${key}" removido!`);
-                                }}
-                                title="Remover atributo"
-                                className="group inline-flex items-center gap-1 rounded-full border px-2 py-1 text-xs text-muted-foreground hover:bg-muted transition"
-                              >
-                                <span className="font-mono text-foreground/80">
-                                  {key}
-                                </span>
-                                <span className="opacity-70">:</span>
-                                <span className="truncate max-w-[12rem]">
-                                  {value}
-                                </span>
-                                <X className="h-3.5 w-3.5 opacity-60 group-hover:opacity-90" />
-                              </button>
-                            )
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  </div>
+                  </CardContent>
                 </Card>
               ))}
             </div>
+          </TabsContent>
+
+          <TabsContent value="settings" className="space-y-6 mt-6">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg">
+                    Status de Publicação
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div className="space-y-0.5">
+                      <Label>Salvar como rascunho</Label>
+                      <p className="text-sm text-muted-foreground">
+                        Rascunhos não são visíveis para os membros
+                      </p>
+                    </div>
+                    <Switch
+                      checked={form.watch("status") === "draft"}
+                      onCheckedChange={(checked) =>
+                        form.setValue("status", checked ? "draft" : "published")
+                      }
+                    />
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg">Agendamento</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="space-y-2">
+                    <Label>Publicar em (opcional)</Label>
+                    <Input
+                      type="datetime-local"
+                      {...form.register("scheduled_at", {
+                        setValueAs: (value) =>
+                          value ? new Date(value) : undefined,
+                      })}
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Deixe vazio para publicar imediatamente
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg">Expiração</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="space-y-2">
+                    <Label>Expira em (opcional)</Label>
+                    <Input
+                      type="datetime-local"
+                      {...form.register("expires_at", {
+                        setValueAs: (value) =>
+                          value ? new Date(value) : undefined,
+                      })}
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      O conteúdo será automaticamente removido nesta data
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          </TabsContent>
+        </Tabs>
+
+        <div className="flex items-center justify-between pt-6 border-t bg-background sticky bottom-0">
+          <div className="flex items-center gap-4">
+            <Button type="button" variant="outline" disabled={isSubmitting}>
+              Cancelar
+            </Button>
           </div>
 
-          <div className="flex justify-between pt-6 border-t">
-            {onCancel && (
-              <Button
-                type="button"
-                variant="outline"
-                onClick={onCancel}
-                disabled={isSubmitting}
-              >
-                Cancelar
-              </Button>
-            )}
+          <div className="flex items-center gap-2">
             <Button
               type="submit"
               disabled={isSubmitting || fields.length === 0}
-              className="min-w-32 ml-auto"
+              className="min-w-32"
             >
               {isSubmitting ? (
                 <>
@@ -508,13 +513,17 @@ export function ContentUpsertForm({
               ) : (
                 <>
                   <Save className="h-4 w-4 mr-2" />
-                  {isEditMode ? "Salvar Alterações" : "Criar Conteúdo"}
+                  {form.watch("status") === "draft"
+                    ? "Salvar Rascunho"
+                    : isEditMode
+                    ? "Salvar Alterações"
+                    : "Publicar Conteúdo"}
                 </>
               )}
             </Button>
           </div>
-        </form>
-      </CardContent>
-    </Card>
+        </div>
+      </form>
+    </div>
   );
 }

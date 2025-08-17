@@ -1,20 +1,31 @@
-export type MemberRole = "admin" | "editor" | "author" | "reader";
-export type MemberStatus = "invited" | "active" | "removed" | "blocked";
-
+export type MemberRole = "admin" | "member" | "moderator";
+export type MemberStatus =
+  | "active"
+  | "inactive"
+  | "invited"
+  | "removed"
+  | "blocked";
 export interface Member {
   id: string;
   community_id: string;
   user_id?: string; // undefined até aceitar convite
+
+  name: string; // snapshot do nome no momento do convite
   email: string; // snapshot do momento do convite
-  display_name?: string; // snapshot do nome no momento do convite
+  bio?: string;
   role: MemberRole;
   status: MemberStatus;
-  invited_at?: Date;
-  joined_at?: Date;
-  last_activity_at?: Date;
 
   invite?: {
-    token_hash?: string; // hash do token de convite
-    expires_at?: Date;
+    token_hash: string; // hash do token de convite
+    expires_at: Date;
   };
+
+  deleted: boolean;
+  archived: boolean;
+
+  deleted_at?: Date;
+  archived_at?: Date;
+  invited_at?: Date;
+  joined_at?: Date;
 }

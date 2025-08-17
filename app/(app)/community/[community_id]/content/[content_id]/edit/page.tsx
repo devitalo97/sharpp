@@ -22,21 +22,19 @@ export default async function Page({ params }: PageProps) {
         description="Faça upload de múltiplas mídias digitais e organize seu conteúdo com
             metadados personalizados."
         breadcrumbs={[
-          { label: "Dashboard", href: "/dashboard" },
           { label: "Minhas Comunidades", href: "/community" },
-          { label: "Minha comunidade", href: "/community/1" },
-          { label: "Meus conteúdos", href: "/community/1/content" },
+          { label: "Minha comunidade", href: `/community/${community_id}` },
+          {
+            label: "Meus conteúdos",
+            href: `/community/${community_id}/content`,
+          },
           {
             label: `Editar conteúdo - ${content.name}`,
             href: `/community/1/content/${content.id}/edit`,
           },
         ]}
       />
-      <ContentUpsertForm
-        initialData={content}
-        communityId={community_id}
-        mode="edit"
-      />
+      <ContentUpsertForm initialData={content} communityId={community_id} />
     </div>
   );
 }

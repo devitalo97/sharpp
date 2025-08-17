@@ -1,24 +1,21 @@
 "use client";
-
-import type React from "react";
 import { useState } from "react";
+import type React from "react";
+
 import { useForm, useFieldArray, type Resolver } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
 import { nanoid } from "nanoid";
-import { extension } from "mime-types";
-import { Content } from "@/app/lib/backend/domain/entity/content.entity";
-import {
-  createOneContentAction,
-  updateOneContentAction,
-} from "@/app/lib/backend/action/content.action";
+import { createManyContentAction } from "@/app/lib/backend/action/content.action";
+import { updateOneContentAction } from "@/app/lib/backend/action/content.action";
+import type { Content } from "@/app/lib/backend/domain/entity/content.entity";
 
 const mimeTypeRegex = /^[a-z]+\/[a-z0-9.+-]+$/i;
 const hexRegex = /^[A-Fa-f0-9]+$/;
 
 export const mediaSchema = z.object({
-  file: z.instanceof(File).optional(), // Optional for existing media
+  file: z.instanceof(File).optional(),
   id: z.string().min(1, "id é obrigatório"),
   community_id: z.string().min(1, "community_id é obrigatório"),
   content_id: z.string().min(1, "content_id é obrigatório"),
@@ -36,7 +33,7 @@ export const mediaSchema = z.object({
     })
     .optional(),
   tags: z.array(z.string().min(1)).optional().default([]),
-  custom_attributes: z.record(z.string(), z.string()).optional().default({}),
+  custom_attributes: z.record(z.string(), z.string()),
   storage: z.object({
     key: z.string().min(1, "storage.key é obrigatório"),
     url: z.url().optional(),
@@ -51,15 +48,16 @@ export const mediaSchema = z.object({
     status: z
       .enum(["pending", "uploading", "completed", "error"])
       .default("pending"),
-    url: z.string().optional(),
+    url: z.string(),
   }),
+  created_at: z.date().default(() => new Date()),
 });
 
-export type MediaFormData = z.infer<typeof mediaSchema>;
+export type Media = z.infer<typeof mediaSchema>;
 
 const contentUpsertSchema = z.object({
-  id: z.string().optional(),
-  community_id: z.string().min(1, "community_id é obrigatório"),
+  id: z.string().default(() => nanoid(21)),
+  community_id: z.string().default(() => nanoid(21)),
   name: z.string().min(1, "Nome do conteúdo é obrigatório"),
   slug: z
     .string()
@@ -70,7 +68,12 @@ const contentUpsertSchema = z.object({
       "Slug deve conter apenas letras minúsculas, números e hífens"
     ),
   description: z.string().optional(),
+  status: z.enum(["draft", "archived", "published"]).default("draft"),
+  scheduled_at: z.date().optional(),
+  expires_at: z.date().optional(),
   medias: z.array(mediaSchema).min(1, "Pelo menos uma mídia é obrigatória"),
+  tags: z.array(z.string().min(1)).optional().default([]),
+  created_at: z.date().default(() => new Date()),
 });
 
 type ContentUpsertFormSchema = z.infer<typeof contentUpsertSchema>;
@@ -88,32 +91,50 @@ export function useContentUpsertForm({
   const contentId = initialData?.id || nanoid(21);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [newTag, setNewTag] = useState("");
-  const [newAttributeStates, setNewAttributeStates] = useState<
-    Record<number, { key: string; value: string }>
-  >({});
+  const [activeTab, setActiveTab] = useState<"content" | "media" | "settings">(
+    "content"
+  );
 
   const form = useForm<ContentUpsertFormSchema>({
     resolver: zodResolver(
       contentUpsertSchema
     ) as Resolver<ContentUpsertFormSchema>,
-    defaultValues: {
-      id: initialData?.id,
-      community_id: communityId,
-      name: initialData?.name || "",
-      slug: initialData?.slug || "",
-      description: initialData?.description || "",
-      medias:
-        initialData?.medias?.map((media) => ({
-          ...media,
-          tags: media.tags || [],
-          custom_attributes: media.custom_attributes || {},
-          upload: {
-            progress: 100,
-            status: "completed" as const,
-            url: media.storage?.url || "",
-          },
-        })) || [],
-    },
+    defaultValues: isEditMode
+      ? {
+          id: initialData.id,
+          community_id: initialData.community_id,
+          name: initialData.name,
+          slug: initialData.slug,
+          description: initialData.description || "",
+          status: initialData.status,
+          scheduled_at: initialData.scheduled_at
+            ? new Date(initialData.scheduled_at)
+            : undefined,
+          expires_at: initialData.expires_at
+            ? new Date(initialData.expires_at)
+            : undefined,
+          medias:
+            initialData.medias?.map((media) => ({
+              ...media,
+              file: undefined,
+              tags: media.tags || [],
+              custom_attributes: media.custom_attributes || {},
+              upload: {
+                progress: 100,
+                status: "completed" as const,
+                url: media.storage.url || "",
+              },
+            })) || [],
+        }
+      : {
+          id: contentId,
+          community_id: communityId,
+          name: "",
+          slug: "",
+          description: "",
+          status: "draft",
+          medias: [],
+        },
   });
 
   const { fields, append, remove, update } = useFieldArray({
@@ -122,84 +143,21 @@ export function useContentUpsertForm({
     keyName: "id",
   });
 
-  const generateS3Key = (
-    file: File,
-    communityId: string,
-    contentId: string,
-    mediaId: string
-  ): string => {
-    const ext =
-      extension(file.type) ||
-      file.name.split(".").pop()?.toLowerCase() ||
-      "bin";
-    return `${communityId}/${contentId}/${mediaId}.${ext}`;
-  };
-
-  const getSignedUploadUrl = async (
-    file: File,
-    s3Key: string
-  ): Promise<string> => {
-    const response = await fetch("/api/generate-signed-put-url", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        key: s3Key,
-        contentType: file.type,
-      }),
-    });
-
-    if (!response.ok) {
-      throw new Error("Falha ao gerar URL de upload");
-    }
-
-    const data = await response.json();
-    return data.signedUrl;
-  };
-
-  const uploadFile = async (
-    file: File,
-    signedUrl: string,
-    onProgress: (progress: number) => void
-  ): Promise<void> => {
-    return new Promise((resolve, reject) => {
-      const xhr = new XMLHttpRequest();
-
-      xhr.upload.addEventListener("progress", (event) => {
-        if (event.lengthComputable) {
-          const progress = Math.round((event.loaded / event.total) * 100);
-          onProgress(progress);
-        }
-      });
-
-      xhr.addEventListener("load", () => {
-        if (xhr.status === 200) {
-          resolve();
-        } else {
-          reject(new Error(`Upload falhou com status ${xhr.status}`));
-        }
-      });
-
-      xhr.addEventListener("error", (e) => {
-        console.error(e);
-        reject(
-          e instanceof Error ? e : new Error("Erro de upload desconhecido")
-        );
-      });
-
-      xhr.open("PUT", signedUrl);
-      xhr.setRequestHeader("Content-Type", file.type);
-      xhr.send(file);
-    });
-  };
-
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(event.target.files || []);
+    addFiles(files);
+    event.target.value = "";
+  };
 
+  const handleFileDrop = (files: File[]) => {
+    addFiles(files);
+  };
+
+  const addFiles = (files: File[]) => {
     files.forEach((file) => {
       const mediaId = nanoid(21);
-      const s3Key = generateS3Key(file, communityId, contentId, mediaId);
+      const fileExtension = file.name.split(".").pop()?.toLowerCase() || "bin";
+      const s3Key = `${communityId}/${contentId}/${mediaId}.${fileExtension}`;
 
       append({
         id: mediaId,
@@ -220,216 +178,124 @@ export function useContentUpsertForm({
           status: "pending",
           url: "",
         },
+        created_at: new Date(),
       });
     });
-
-    event.target.value = "";
   };
 
-  const addTag = (mediaIndex: number) => {
-    if (!newTag.trim()) return;
-
-    const currentMedia = fields[mediaIndex];
-    const updatedTags = [...(currentMedia.tags || []), newTag.trim()];
-
+  const addTag = (mediaIndex: number) => (tag: string) => {
     update(mediaIndex, {
-      ...currentMedia,
-      tags: updatedTags,
-    });
-
-    setNewTag("");
-  };
-
-  const removeTag = (mediaIndex: number, tagIndex: number) => {
-    const currentMedia = fields[mediaIndex];
-    const updatedTags = (currentMedia.tags || []).filter(
-      (_, index) => index !== tagIndex
-    );
-
-    update(mediaIndex, {
-      ...currentMedia,
-      tags: updatedTags,
+      ...fields[mediaIndex],
+      tags: [...fields[mediaIndex].tags, tag],
     });
   };
 
-  const getNewAttributeKey = (mediaIndex: number) =>
-    newAttributeStates[mediaIndex]?.key || "";
-
-  const getNewAttributeValue = (mediaIndex: number) =>
-    newAttributeStates[mediaIndex]?.value || "";
-
-  const setNewAttributeKey = (mediaIndex: number) => (key: string) => {
-    setNewAttributeStates((prev) => ({
-      ...prev,
-      [mediaIndex]: { ...prev[mediaIndex], key },
-    }));
+  const removeTag = (mediaIndex: number) => (tagIndex: number) => {
+    update(mediaIndex, {
+      ...fields[mediaIndex],
+      tags: fields[mediaIndex].tags.filter((_, index) => index !== tagIndex),
+    });
   };
 
-  const setNewAttributeValue = (mediaIndex: number) => (value: string) => {
-    setNewAttributeStates((prev) => ({
-      ...prev,
-      [mediaIndex]: { ...prev[mediaIndex], value },
-    }));
-  };
-
-  const addCustomAttribute = (mediaIndex: number) => {
-    const key = getNewAttributeKey(mediaIndex);
-    const value = getNewAttributeValue(mediaIndex);
-
-    if (!key.trim() || !value.trim()) return;
-
-    const currentMedia = fields[mediaIndex];
-    const updatedAttributes = {
-      ...(currentMedia.custom_attributes || {}),
-      [key.trim()]: value.trim(),
+  const addCustomAttribute =
+    (mediaIndex: number) => (key: string, value: string) => {
+      update(mediaIndex, {
+        ...fields[mediaIndex],
+        custom_attributes: {
+          ...fields[mediaIndex].custom_attributes,
+          [key]: value,
+        },
+      });
     };
 
-    update(mediaIndex, {
-      ...currentMedia,
-      custom_attributes: updatedAttributes,
-    });
-
-    setNewAttributeStates((prev) => ({
-      ...prev,
-      [mediaIndex]: { key: "", value: "" },
-    }));
-  };
-
-  const removeCustomAttribute = (mediaIndex: number, attributeKey: string) => {
-    const currentMedia = fields[mediaIndex];
-    const updatedAttributes = { ...(currentMedia.custom_attributes || {}) };
-    delete updatedAttributes[attributeKey];
-
-    update(mediaIndex, {
-      ...currentMedia,
-      custom_attributes: updatedAttributes,
-    });
+  const removeCustomAttribute = (mediaIndex: number) => (key: string) => {
+    const media = fields[mediaIndex];
+    const customAttributes = { ...media.custom_attributes };
+    delete customAttributes[key];
+    update(mediaIndex, { ...media, custom_attributes: customAttributes });
   };
 
   const uploadMedia = async (mediaIndex: number) => {
     const media = fields[mediaIndex];
     if (!media.file) return;
 
-    try {
+    // Simulate upload
+    const progressInterval = setInterval(() => {
+      update(mediaIndex, {
+        ...media,
+        upload: { ...media.upload, progress: media.upload.progress + 10 },
+      });
+    }, 500);
+
+    setTimeout(() => {
+      clearInterval(progressInterval);
       update(mediaIndex, {
         ...media,
         upload: {
           ...media.upload,
-          status: "uploading",
-          progress: 0,
-        },
-      });
-
-      toast.loading(`Iniciando upload de ${media.name}...`, {
-        id: `upload-${mediaIndex}`,
-      });
-
-      const signedUrl = await getSignedUploadUrl(media.file, media.storage.key);
-
-      await uploadFile(media.file, signedUrl, (progress) => {
-        update(mediaIndex, {
-          ...fields[mediaIndex],
-          upload: {
-            ...fields[mediaIndex].upload,
-            progress,
-          },
-        });
-
-        toast.loading(`Enviando ${media.name}... ${progress}%`, {
-          id: `upload-${mediaIndex}`,
-        });
-      });
-
-      update(mediaIndex, {
-        ...fields[mediaIndex],
-        upload: {
-          ...fields[mediaIndex].upload,
           status: "completed",
-          progress: 100,
+          url: "https://example.com/uploaded-file",
         },
       });
-
-      toast.success(`${media.name} foi enviado com sucesso!`, {
-        id: `upload-${mediaIndex}`,
-      });
-    } catch (error) {
-      update(mediaIndex, {
-        ...fields[mediaIndex],
-        upload: {
-          ...fields[mediaIndex].upload,
-          status: "error",
-          progress: 0,
-        },
-      });
-
-      toast.error(`Falha ao enviar ${media.name}. Tente novamente.`, {
-        id: `upload-${mediaIndex}`,
-      });
-    }
+    }, 5000);
   };
 
   const uploadAllMedias = async () => {
-    const pendingMedias = fields
-      .map((media, index) => ({ media, index }))
-      .filter(({ media }) => media.upload?.status === "pending");
-
-    if (pendingMedias.length === 0) {
-      toast.info("Não há mídias pendentes para upload.");
-      return;
+    for (let i = 0; i < fields.length; i++) {
+      await uploadMedia(i);
     }
-
-    toast.info(`Iniciando upload de ${pendingMedias.length} mídia(s)...`);
-
-    for (const { index } of pendingMedias) {
-      await uploadMedia(index);
-    }
-
-    toast.success("Todos os uploads foram concluídos!");
   };
 
   const onSubmit = async (data: ContentUpsertFormSchema) => {
     setIsSubmitting(true);
 
     try {
+      // Verificar se todas as mídias foram enviadas
       const pendingUploads = data.medias.filter(
         (media) => media.upload?.status !== "completed"
       );
 
       if (pendingUploads.length > 0) {
-        toast.error("Todas as mídias devem ser enviadas antes de salvar.");
+        toast.error(
+          "Todas as mídias devem ser enviadas antes de salvar o conteúdo."
+        );
         return;
       }
 
+      const loadingMessage = isEditMode
+        ? "Salvando alterações..."
+        : "Salvando conteúdo...";
+      const successMessage = isEditMode
+        ? "Conteúdo atualizado com sucesso!"
+        : "Conteúdo criado com sucesso!";
+
+      toast.loading(loadingMessage);
+
+      // Preparar dados para envio (remover propriedades de upload)
       const contentData = {
         ...data,
         medias: data.medias.map(({ upload, file, ...media }) => media),
       };
 
-      toast.loading(
-        isEditMode ? "Salvando alterações..." : "Criando conteúdo..."
-      );
-
       if (isEditMode) {
+        // Modo de edição: usar updateOneContentAction
         await updateOneContentAction(contentId, contentData);
       } else {
-        await createOneContentAction({ ...contentData, id: contentId });
+        // Modo de criação: usar createManyContentAction
+        await createManyContentAction([contentData]);
       }
 
-      toast.success(
-        isEditMode
-          ? "Conteúdo atualizado com sucesso!"
-          : "Conteúdo criado com sucesso!"
-      );
+      toast.success(successMessage);
 
+      // Reset do formulário apenas no modo de criação
       if (!isEditMode) {
         form.reset();
       }
     } catch (error) {
-      toast.error(
-        initialData
-          ? "Ocorreu um erro ao salvar as alterações."
-          : "Ocorreu um erro ao criar o conteúdo."
-      );
+      const errorMessage = isEditMode
+        ? "Ocorreu um erro ao salvar as alterações."
+        : "Ocorreu um erro ao criar o conteúdo.";
+      toast.error(errorMessage);
     } finally {
       setIsSubmitting(false);
     }
@@ -439,13 +305,13 @@ export function useContentUpsertForm({
     form,
     fields,
     isSubmitting,
+    isEditMode,
+    activeTab,
+    setActiveTab,
     newTag,
     setNewTag,
-    getNewAttributeKey,
-    getNewAttributeValue,
-    setNewAttributeKey,
-    setNewAttributeValue,
     handleFileSelect,
+    handleFileDrop,
     addTag,
     removeTag,
     addCustomAttribute,

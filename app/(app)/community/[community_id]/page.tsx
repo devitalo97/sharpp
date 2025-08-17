@@ -288,7 +288,6 @@ export default async function CommunityPage({
         title={community.name}
         description="Gerencie sua comunidade, conteúdos e membros"
         breadcrumbs={[
-          { label: "Dashboard", href: "/dashboard" },
           { label: "Minhas Comunidades", href: "/community" },
           { label: community.name, href: `/community/${community.id}` },
         ]}

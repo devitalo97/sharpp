@@ -8,7 +8,7 @@ export class FindOneByIdCommunityUsecase {
   ) {}
 
   /**
-   * Pesquisa por um conteúdo a partir do id.
+   * Pesquisa por uma comunidade a partir do id.
    */
   @Omit(["_id"])
   async execute(id: string): Promise<Community | null> {

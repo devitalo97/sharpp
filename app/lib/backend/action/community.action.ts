@@ -4,7 +4,7 @@ import { Community } from "../domain/entity/community.entity";
 import { mongoDbClient } from "../infrastructure/client/mongo.client";
 import { MongoRepository } from "../infrastructure/repository/mongo.repository";
 import { CreateOneCommunityUsecase } from "../usecase/create-one.community.usecase";
-import { DeleteOneByIdCommunityUsecase } from "../usecase/delete-one.community.usecase";
+import { DeleteOneByIdCommunityUsecase } from "../usecase/delete-one-by-id.community.usecase";
 import { FindManyCommunityUsecase } from "../usecase/find-many.community.usecase";
 import { FindOneByIdCommunityUsecase } from "../usecase/find-one-by-id.community.usecase";
 import { UpdateOneCommunityUsecase } from "../usecase/update-one.community.usecase";

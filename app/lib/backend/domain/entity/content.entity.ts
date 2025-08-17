@@ -6,6 +6,12 @@ export interface Content {
   community_id: string;
   name: string;
   description?: string;
-  medias?: Media[];
-  tags?: string[];
+  medias: Media[];
+  tags: string[];
+
+  status: "draft" | "archived" | "published";
+
+  scheduled_at?: Date;
+  expires_at?: Date;
+  created_at: Date;
 }

@@ -1,17 +1,17 @@
 import { Omit } from "../../decorator/omit";
-import { Community } from "../domain/entity/community.entity";
+import { Member } from "../domain/entity/member.entity";
 import { IDocumentRepository } from "../domain/repository/document.repository";
 
-export class CreateOneCommunityUsecase {
+export class CreateOneMemberUsecase {
   constructor(
-    private readonly documentRepository: IDocumentRepository<Community>
+    private readonly documentRepository: IDocumentRepository<Member>
   ) {}
 
   /**
-   * Cria uma comunidade
+   * Criar membro em uma comunidade.
    */
   @Omit(["_id"])
-  async execute(input: Community): Promise<Community> {
+  async execute(input: Member): Promise<Member> {
     const created = await this.documentRepository.insertOne(input);
 
     return created;
