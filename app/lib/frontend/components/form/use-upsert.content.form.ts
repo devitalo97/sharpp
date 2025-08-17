@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type React from "react";
 
 import { useForm, useFieldArray, type Resolver } from "react-hook-form";
@@ -10,6 +10,7 @@ import { nanoid } from "nanoid";
 import { createManyContentAction } from "@/app/lib/backend/action/content.action";
 import { updateOneContentAction } from "@/app/lib/backend/action/content.action";
 import type { Content } from "@/app/lib/backend/domain/entity/content.entity";
+import { extension } from "mime-types";
 
 const mimeTypeRegex = /^[a-z]+\/[a-z0-9.+-]+$/i;
 const hexRegex = /^[A-Fa-f0-9]+$/;
@@ -143,6 +144,78 @@ export function useContentUpsertForm({
     keyName: "id",
   });
 
+  const generateS3Key = (
+    file: File,
+    communityId: string,
+    contentId: string,
+    mediaId: string
+  ): string => {
+    const ext =
+      extension(file.type) ||
+      file.name.split(".").pop()?.toLowerCase() ||
+      "bin";
+    return `${communityId}/${contentId}/${mediaId}.${ext}`;
+  };
+
+  const getSignedUploadUrl = async (
+    file: File,
+    s3Key: string
+  ): Promise<string> => {
+    const response = await fetch("/api/generate-signed-put-url", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        key: s3Key,
+        contentType: file.type,
+      }),
+    });
+
+    if (!response.ok) {
+      throw new Error("Falha ao gerar URL de upload");
+    }
+
+    const data = await response.json();
+    return data.signedUrl;
+  };
+
+  const uploadFile = async (
+    file: File,
+    signedUrl: string,
+    onProgress: (progress: number) => void
+  ): Promise<void> => {
+    return new Promise((resolve, reject) => {
+      const xhr = new XMLHttpRequest();
+
+      xhr.upload.addEventListener("progress", (event) => {
+        if (event.lengthComputable) {
+          const progress = Math.round((event.loaded / event.total) * 100);
+          onProgress(progress);
+        }
+      });
+
+      xhr.addEventListener("load", () => {
+        if (xhr.status === 200) {
+          resolve();
+        } else {
+          reject(new Error(`Upload falhou com status ${xhr.status}`));
+        }
+      });
+
+      xhr.addEventListener("error", (e) => {
+        console.error(e);
+        reject(
+          e instanceof Error ? e : new Error("Erro de upload desconhecido")
+        );
+      });
+
+      xhr.open("PUT", signedUrl);
+      xhr.setRequestHeader("Content-Type", file.type);
+      xhr.send(file);
+    });
+  };
+
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(event.target.files || []);
     addFiles(files);
@@ -156,8 +229,7 @@ export function useContentUpsertForm({
   const addFiles = (files: File[]) => {
     files.forEach((file) => {
       const mediaId = nanoid(21);
-      const fileExtension = file.name.split(".").pop()?.toLowerCase() || "bin";
-      const s3Key = `${communityId}/${contentId}/${mediaId}.${fileExtension}`;
+      const s3Key = generateS3Key(file, communityId, contentId, mediaId);
 
       append({
         id: mediaId,
@@ -219,31 +291,81 @@ export function useContentUpsertForm({
     const media = fields[mediaIndex];
     if (!media.file) return;
 
-    // Simulate upload
-    const progressInterval = setInterval(() => {
-      update(mediaIndex, {
-        ...media,
-        upload: { ...media.upload, progress: media.upload.progress + 10 },
-      });
-    }, 500);
-
-    setTimeout(() => {
-      clearInterval(progressInterval);
+    try {
       update(mediaIndex, {
         ...media,
         upload: {
           ...media.upload,
-          status: "completed",
-          url: "https://example.com/uploaded-file",
+          status: "uploading",
+          progress: 0,
         },
       });
-    }, 5000);
+
+      toast.loading(`Iniciando upload de ${media.name}...`, {
+        id: `upload-${mediaIndex}`,
+      });
+
+      const signedUrl = await getSignedUploadUrl(media.file, media.storage.key);
+
+      await uploadFile(media.file, signedUrl, (progress) => {
+        update(mediaIndex, {
+          ...fields[mediaIndex],
+          upload: {
+            ...fields[mediaIndex].upload,
+            progress,
+          },
+        });
+
+        toast.loading(`Enviando ${media.name}... ${progress}%`, {
+          id: `upload-${mediaIndex}`,
+        });
+      });
+
+      update(mediaIndex, {
+        ...fields[mediaIndex],
+        upload: {
+          ...fields[mediaIndex].upload,
+          status: "completed",
+          progress: 100,
+        },
+      });
+
+      toast.success(`${media.name} foi enviado com sucesso!`, {
+        id: `upload-${mediaIndex}`,
+      });
+    } catch (error) {
+      update(mediaIndex, {
+        ...fields[mediaIndex],
+        upload: {
+          ...fields[mediaIndex].upload,
+          status: "error",
+          progress: 0,
+        },
+      });
+
+      toast.error(`Falha ao enviar ${media.name}. Tente novamente.`, {
+        id: `upload-${mediaIndex}`,
+      });
+    }
   };
 
   const uploadAllMedias = async () => {
-    for (let i = 0; i < fields.length; i++) {
-      await uploadMedia(i);
+    const pendingMedias = fields
+      .map((media, index) => ({ media, index }))
+      .filter(({ media }) => media.upload?.status === "pending");
+
+    if (pendingMedias.length === 0) {
+      toast.info("Não há mídias pendentes para upload.");
+      return;
     }
+
+    toast.info(`Iniciando upload de ${pendingMedias.length} mídia(s)...`);
+
+    for (const { index } of pendingMedias) {
+      await uploadMedia(index);
+    }
+
+    toast.success("Todos os uploads foram concluídos!");
   };
 
   const onSubmit = async (data: ContentUpsertFormSchema) => {

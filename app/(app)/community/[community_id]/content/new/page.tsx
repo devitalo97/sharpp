@@ -27,7 +27,7 @@ export default async function Page({ params }: PageProps) {
           { label: "Novo conteúdo" },
         ]}
       />
-      <ContentUpsertForm communityId={community_id} mode="create" />
+      <ContentUpsertForm communityId={community_id} />
     </div>
   );
 }
