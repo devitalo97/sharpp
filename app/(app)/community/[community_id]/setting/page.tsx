@@ -15,7 +15,7 @@ interface PageProps {
 export default async function CommunityConfigurationPage({
   params,
 }: PageProps) {
-  const { community_id } = params;
+  const { community_id } = await params;
 
   const community = await findOneByIdCommunityAction(community_id);
 
@@ -28,7 +28,7 @@ export default async function CommunityConfigurationPage({
     { label: community.name, href: `/community/${community_id}` },
     {
       label: "Configurações",
-      href: `/community/${community_id}/configuration`,
+      href: `/community/${community_id}/setting`,
     },
   ];
 

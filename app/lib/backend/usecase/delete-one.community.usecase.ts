@@ -11,8 +11,8 @@ export class DeleteOneByIdCommunityUsecase {
    * Deletar uma comunidade
    */
   @Omit(["_id"])
-  async execute(id: string): Promise<void> {
-    await this.documentRepository.updateOne(
+  async execute(id: string): Promise<boolean> {
+    return await this.documentRepository.updateOne(
       { id },
       { $set: { deleted_at: new Date(), deleted: true } }
     );

@@ -165,7 +165,7 @@ interface PageProps {
 }
 
 export default async function CommunityMembersPage({ params }: PageProps) {
-  const { community_id } = params;
+  const { community_id } = await params;
 
   // Mock community data - replace with actual data fetching
   const community = {

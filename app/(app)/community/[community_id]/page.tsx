@@ -257,7 +257,7 @@ export default async function CommunityPage({
 }: {
   params: { community_id: string };
 }) {
-  const { community_id } = params;
+  const { community_id } = await params;
 
   const community = await findOneByIdCommunityAction(community_id);
 
