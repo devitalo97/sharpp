@@ -7,8 +7,10 @@ import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
 import { nanoid } from "nanoid";
-import { createManyContentAction } from "@/app/lib/backend/action/content.action";
-import { updateOneContentAction } from "@/app/lib/backend/action/content.action";
+import {
+  createOneContentAction,
+  updateOneContentAction,
+} from "@/app/lib/backend/action/content.action";
 import type { Content } from "@/app/lib/backend/domain/entity/content.entity";
 import { resolveMimeAndExt } from "../../util/file-mime";
 
@@ -398,7 +400,7 @@ export function useContentUpsertForm({
         await updateOneContentAction(contentId, contentData);
       } else {
         // Modo de criação: usar createManyContentAction
-        await createManyContentAction([contentData]);
+        await createOneContentAction(contentData);
       }
 
       toast.success(successMessage);

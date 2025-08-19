@@ -45,8 +45,10 @@ export class UpdateOneContentUsecase {
           typeof storage.expires_at !== "number" || storage.expires_at <= now;
 
         if (!hasUrl || expired) {
-          const url = await this.objectRepository.generateSignedGetUrl({
+          const url = await this.objectRepository.generateSignedDownloadUrl({
             key: storage.key,
+            filename: `${m.name}.${m.ext}`,
+            contentType: m.type,
             expiresInSeconds: ttl,
           });
 

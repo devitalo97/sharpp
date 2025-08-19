@@ -5,7 +5,6 @@ import { mongoDbClient } from "../infrastructure/client/mongo.client";
 import { s3Client } from "../infrastructure/client/s3.client";
 import { MongoRepository } from "../infrastructure/repository/mongo.repository";
 import { S3Repository } from "../infrastructure/repository/s3.repository";
-import { CreateManyContentUsecase } from "../usecase/create-many.content.usecase";
 import { CreateOneContentUsecase } from "../usecase/create-one.content.usecase";
 import { DownloadOneMediaUseCase } from "../usecase/download.media.usecase";
 import { FindManyContentUsecase } from "../usecase/find-many.content.usecase";
@@ -22,10 +21,6 @@ const objectRepository = new S3Repository(s3Client, {
   bucket: process.env.S3_BUCKET_NAME!,
 });
 
-const createManyUsecase = new CreateManyContentUsecase(
-  documentRepository,
-  objectRepository
-);
 const createOneUsecase = new CreateOneContentUsecase(
   documentRepository,
   objectRepository
@@ -40,10 +35,6 @@ const downloadOneMediaUsecase = new DownloadOneMediaUseCase(
   documentRepository,
   objectRepository
 );
-
-export async function createManyContentAction(input: Content[]) {
-  return await createManyUsecase.execute(input);
-}
 
 export async function createOneContentAction(input: Content) {
   return await createOneUsecase.execute(input);

@@ -29,6 +29,14 @@ export interface DownloadResult {
   contentLength?: number;
 }
 
+// supondo que seu domínio ainda não tenha:
+export type GenerateSignedDownloadUrlParams = {
+  key: string;
+  filename: string;
+  contentType?: string;
+  expiresInSeconds?: number;
+};
+
 export interface IObjectRepository {
   /**
    * Faz o upload direto do objeto (servidor para S3)
@@ -36,7 +44,7 @@ export interface IObjectRepository {
   upload(params: UploadParams): Promise<void>;
 
   /**
-   * Gera uma URL assinada para download (GET)
+   * Gera uma URL assinada para visualização (GET)
    */
   generateSignedGetUrl(params: GenerateSignedGetUrlParams): Promise<string>;
 
@@ -44,6 +52,13 @@ export interface IObjectRepository {
    * Gera uma URL assinada para upload (PUT)
    */
   generateSignedPutUrl(params: GenerateSignedPutUrlParams): Promise<string>;
+
+  /**
+   * Gera uma URL assinada para download (GET)
+   */
+  generateSignedDownloadUrl(
+    params: GenerateSignedDownloadUrlParams
+  ): Promise<string>;
 
   /**
    * Retorna um Readable stream para o objeto e seus metadados básicos

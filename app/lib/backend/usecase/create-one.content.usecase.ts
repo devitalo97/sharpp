@@ -33,9 +33,10 @@ export class CreateOneContentUsecase {
           return { ...m, storage };
         }
 
-        // Gera URL de GET para visualização/baixa
-        const url = await this.objectRepository.generateSignedGetUrl({
+        const url = await this.objectRepository.generateSignedDownloadUrl({
           key: storage.key,
+          filename: `${m.name}.${m.ext}`,
+          contentType: m.type,
           expiresInSeconds: ttl,
         });
 

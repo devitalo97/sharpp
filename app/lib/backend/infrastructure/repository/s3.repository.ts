@@ -9,6 +9,7 @@ import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import type { Readable } from "stream";
 import {
   DownloadParams,
+  GenerateSignedDownloadUrlParams,
   GenerateSignedGetUrlParams,
   IObjectRepository,
   UploadParams,
@@ -48,7 +49,7 @@ export class S3Repository implements IObjectRepository {
     }
   }
 
-  /** URL pré-assinada para DOWNLOAD (GET) */
+  /** URL pré-assinada para VISUALIZAÇÃO (GET) */
   public async generateSignedGetUrl({
     key,
     expiresInSeconds = this.cfg.defaultGetExpirySec ?? 300,
@@ -62,6 +63,40 @@ export class S3Repository implements IObjectRepository {
     } catch (err: unknown) {
       logS3Error("SIGN_GET", key, err);
       throw S3RepositoryError.wrap("SIGN_GET", key, err);
+    }
+  }
+
+  /** URL pré-assinada para DOWNLOAD (GET com attachment) */
+  public async generateSignedDownloadUrl({
+    key,
+    filename,
+    contentType,
+    expiresInSeconds = this.cfg.defaultGetExpirySec ?? 300,
+  }: GenerateSignedDownloadUrlParams): Promise<string> {
+    validateS3Key(key);
+
+    // RFC 5987 (suporte melhor a UTF-8)
+    const filenameStar = encodeURIComponent(filename);
+
+    // Preferência: alguns browsers honram filename*, outros filename
+    const contentDisposition = `attachment; filename="${filename}"; filename*=UTF-8''${filenameStar}`;
+
+    try {
+      const cmd = new GetObjectCommand({
+        Bucket: this.cfg.bucket,
+        Key: key,
+        // Força comportamento de download no navegador
+        ResponseContentDisposition: contentDisposition,
+        // Opcionalmente sugere o content-type (se não passar, usa o do objeto)
+        ...(contentType ? { ResponseContentType: contentType } : {}),
+      });
+
+      return await getSignedUrl(this.client, cmd, {
+        expiresIn: expiresInSeconds,
+      });
+    } catch (err: unknown) {
+      logS3Error("SIGN_GET_DOWNLOAD", key, err);
+      throw S3RepositoryError.wrap("SIGN_GET_DOWNLOAD", key, err);
     }
   }
 
