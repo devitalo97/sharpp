@@ -185,7 +185,7 @@ interface CustomCommunity extends Community {
 export default async function Page({
   params,
 }: {
-  params: { community_id: string };
+  params: Promise<{ community_id: string }>;
 }) {
   const { community_id } = await params;
   const _community = await findOneByIdCommunityAction(community_id);

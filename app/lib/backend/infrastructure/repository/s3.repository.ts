@@ -71,9 +71,8 @@ export class S3Repository implements IObjectRepository {
     contentType: string;
     contentLength: number;
     expiresInSeconds?: number;
-    metadata?: Record<string, string>;
   }): Promise<string> {
-    const { key, contentType, contentLength, metadata } = input;
+    const { key, contentType, contentLength } = input;
     validateS3Key(key);
     validateContentLength(contentLength);
 
@@ -81,7 +80,6 @@ export class S3Repository implements IObjectRepository {
       Bucket: this.cfg.bucket,
       Key: key,
       ContentType: contentType,
-      Metadata: normalizeMetadata(metadata),
     };
 
     try {
@@ -180,24 +178,6 @@ class S3RepositoryError extends Error {
   }
 }
 
-function sanitizeFileName(name: string): string {
-  return name.replace(/[\r\n"]/g, "").slice(0, 200);
-}
-function normalizeMetadata(meta?: Record<string, string>) {
-  const out: Record<string, string> = {};
-  if (!meta) return out;
-  for (const [k, v] of Object.entries(meta)) {
-    // Block x-amz-meta-* reserved, sanitize key
-    const key = k
-      .toLowerCase()
-      .replace(/^x-amz-meta-/, "") // block S3 reserved prefix
-      .replace(/[^a-z0-9-_.]/g, "_")
-      .slice(0, 40);
-    const val = Buffer.from(String(v), "utf8").toString("utf8").slice(0, 1000);
-    out[key] = val;
-  }
-  return out;
-}
 function validateS3Key(key: string) {
   if (!key || key.length > 1024 || /(^\.{1,2}\/|\/\.{1,2}\/)/.test(key)) {
     throw new S3RepositoryError(`Chave S3 inválida: ${key}`, "VALIDATION");

@@ -35,11 +35,13 @@ import { normalize } from "../../util/normalize";
 interface ContentUpsertFormProps {
   initialData?: Content;
   communityId: string;
+  contentId: string;
 }
 
 export function ContentUpsertForm({
   initialData,
   communityId,
+  contentId,
 }: ContentUpsertFormProps) {
   const {
     form,
@@ -61,6 +63,7 @@ export function ContentUpsertForm({
   } = useContentUpsertForm({
     initialData,
     communityId,
+    contentId,
   });
 
   const [isDragOver, setIsDragOver] = useState(false);

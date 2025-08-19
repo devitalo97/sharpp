@@ -1,5 +1,5 @@
 "use client";
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import type React from "react";
 
 import { useForm, useFieldArray, type Resolver } from "react-hook-form";
@@ -83,14 +83,15 @@ type ContentUpsertFormSchema = z.infer<typeof contentUpsertSchema>;
 interface UseContentUpsertFormProps {
   initialData?: Content;
   communityId: string;
+  contentId: string;
 }
 
 export function useContentUpsertForm({
   initialData,
   communityId,
+  contentId,
 }: UseContentUpsertFormProps) {
   const isEditMode = !!initialData;
-  const contentId = useMemo(() => initialData?.id || nanoid(21), [initialData]);
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [newTag, setNewTag] = useState("");
@@ -104,7 +105,7 @@ export function useContentUpsertForm({
     ) as Resolver<ContentUpsertFormSchema>,
     defaultValues: isEditMode
       ? {
-          id: initialData.id,
+          id: contentId,
           community_id: initialData.community_id,
           name: initialData.name,
           slug: initialData.slug,
@@ -220,7 +221,7 @@ export function useContentUpsertForm({
   const addFiles = async (files: File[]) => {
     for (const file of files) {
       const mediaId = nanoid(21);
-      const { type, ext } = await resolveMimeAndExt(file);
+      const { type, ext, name } = await resolveMimeAndExt(file);
       const s3Key = `${communityId}/${contentId}/${mediaId}.${ext}`;
 
       append({
@@ -228,7 +229,7 @@ export function useContentUpsertForm({
         content_id: contentId,
         community_id: communityId,
         file,
-        name: file.name.replace(/\.[^/.]+$/, ""),
+        name,
         description: "",
         tags: [],
         custom_attributes: {},

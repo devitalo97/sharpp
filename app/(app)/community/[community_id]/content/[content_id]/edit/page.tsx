@@ -34,7 +34,11 @@ export default async function Page({ params }: PageProps) {
           },
         ]}
       />
-      <ContentUpsertForm initialData={content} communityId={community_id} />
+      <ContentUpsertForm
+        initialData={content}
+        communityId={community_id}
+        contentId={content.id}
+      />
     </div>
   );
 }

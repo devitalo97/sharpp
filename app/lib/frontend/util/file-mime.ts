@@ -30,25 +30,26 @@ function getDotExt(name: string): string | undefined {
 
 export async function resolveMimeAndExt(
   file: File
-): Promise<{ type: string; ext: string }> {
-  const name = file.name.toLowerCase();
-  const dotExt = getDotExt(name); // ex: ".tsx"
+): Promise<{ type: string; ext: string; name: string }> {
+  const originalName = file.name; // mantém o case para exibição
+  const lowerName = originalName.toLowerCase();
+  const dotExt = getDotExt(lowerName); // ex.: ".tsx"
 
-  // 1) MIME vindo do navegador (pode ser vazio/ruim p/ .ts/.tsx)
+  // 1) MIME do navegador (ignora o "video/mp2t" problemático)
   let type = file.type && file.type !== "video/mp2t" ? file.type : "";
 
-  // 2) Se vazio ou problemático, tente por nome com mime-types
+  // 2) Se vazio, tenta pelo nome
   if (!type) {
-    const byName = guessFromName(name); // pode ser string ou false
+    const byName = guessFromName(lowerName);
     if (byName) type = byName;
   }
 
-  // 3) Overrides por extensão para casos comuns que o browser/lib não resolvem bem
+  // 3) Overrides por extensão conhecida
   if (dotExt && CUSTOM_MIME_BY_EXT[dotExt]) {
     type = CUSTOM_MIME_BY_EXT[dotExt];
   }
 
-  // 4) Heurística leve: caso continue vazio, tente detectar se é texto/código (opcional)
+  // 4) Heurística leve para arquivos de texto/código
   if (
     !type &&
     dotExt &&
@@ -58,7 +59,7 @@ export async function resolveMimeAndExt(
   ) {
     try {
       const head = await file.slice(0, 512).text();
-      const looksText = /[\x09\x0A\x0D\x20-\x7E]/.test(head); // ASCII imprimível
+      const looksText = /[\x09\x0A\x0D\x20-\x7E]/.test(head);
       if (looksText) {
         type = CUSTOM_MIME_BY_EXT[dotExt] || "text/plain; charset=utf-8";
       }
@@ -67,19 +68,26 @@ export async function resolveMimeAndExt(
     }
   }
 
-  // 5) Fallback final
+  // 5) Fallback MIME
   if (!type) type = "application/octet-stream";
 
-  // 6) Extensão preferencial a partir do MIME
+  // 6) Ext preferencial pelo MIME
   let ext = extFromMime(type) || "";
-  // Ajustes manuais (quando mime-types não souber mapear)
   if (!ext && CUSTOM_EXT_BY_MIME[type]) ext = CUSTOM_EXT_BY_MIME[type];
 
-  // 7) Se ainda não temos extensão pelo MIME, use a do nome (sem ponto)
+  // 7) Se ainda não, usa a do nome (sem ponto)
   if (!ext && dotExt) ext = dotExt.slice(1);
 
   // 8) Fallback definitivo
   if (!ext) ext = "bin";
 
-  return { type, ext };
+  // 9) baseName (remove apenas a ÚLTIMA extensão)
+  //    trata dotfiles como ".env" (vira "env" em vez de string vazia)
+  const withoutLast = originalName.replace(/\.[^/.]+$/, "");
+  const baseName =
+    withoutLast.length === 0 && originalName.startsWith(".")
+      ? originalName.slice(1)
+      : withoutLast;
+
+  return { type, ext, name: baseName };
 }

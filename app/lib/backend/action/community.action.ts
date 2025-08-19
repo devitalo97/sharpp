@@ -9,17 +9,19 @@ import { FindManyCommunityUsecase } from "../usecase/find-many.community.usecase
 import { FindOneByIdCommunityUsecase } from "../usecase/find-one-by-id.community.usecase";
 import { UpdateOneCommunityUsecase } from "../usecase/update-one.community.usecase";
 
-const mongodb = new MongoRepository<Community>(
+const documentRepository = new MongoRepository<Community>(
   mongoDbClient,
-  "sharp",
+  process.env.MONGODB_DB_NAME!,
   "community"
 );
 
-const createOneUsecase = new CreateOneCommunityUsecase(mongodb);
-const findOneByIdUsecase = new FindOneByIdCommunityUsecase(mongodb);
-const findManyUsecase = new FindManyCommunityUsecase(mongodb);
-const updateOneUsecase = new UpdateOneCommunityUsecase(mongodb);
-const deleteByIdOneUsecase = new DeleteOneByIdCommunityUsecase(mongodb);
+const createOneUsecase = new CreateOneCommunityUsecase(documentRepository);
+const findOneByIdUsecase = new FindOneByIdCommunityUsecase(documentRepository);
+const findManyUsecase = new FindManyCommunityUsecase(documentRepository);
+const updateOneUsecase = new UpdateOneCommunityUsecase(documentRepository);
+const deleteByIdOneUsecase = new DeleteOneByIdCommunityUsecase(
+  documentRepository
+);
 export async function createOneCommunityAction(input: Community) {
   return await createOneUsecase.execute(input);
 }

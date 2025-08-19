@@ -1,4 +1,3 @@
-import { Suspense } from "react";
 import Link from "next/link";
 import {
   ArrowLeft,
@@ -6,7 +5,6 @@ import {
   Filter,
   FileText,
   Calendar,
-  Tag,
   Eye,
 } from "lucide-react";
 import {
@@ -19,7 +17,6 @@ import {
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/empty-state";
 import { Content } from "@/app/lib/backend/domain/entity/content.entity";
 import { findManyContentAction } from "@/app/lib/backend/action/content.action";
@@ -86,40 +83,10 @@ function ContentCard({ content }: { content: Content }) {
   );
 }
 
-function ContentListSkeleton() {
-  return (
-    <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-      {Array.from({ length: 6 }).map((_, i) => (
-        <Card key={i}>
-          <CardHeader>
-            <Skeleton className="h-6 w-3/4" />
-            <Skeleton className="h-4 w-full" />
-            <Skeleton className="h-4 w-2/3" />
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              <div className="flex gap-2">
-                <Skeleton className="h-5 w-16" />
-                <Skeleton className="h-5 w-20" />
-                <Skeleton className="h-5 w-14" />
-              </div>
-              <div className="flex justify-between">
-                <Skeleton className="h-4 w-24" />
-                <Skeleton className="h-4 w-20" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      ))}
-    </div>
-  );
-}
-
 async function ContentList({ contents }: { contents: Content[] }) {
   if (contents.length === 0) {
     return (
       <EmptyState
-        icon={FileText}
         title="Nenhum conteúdo encontrado"
         description={"Esta comunidade ainda não possui conteúdos publicados."}
       />
@@ -149,7 +116,7 @@ export default async function Page({
         {/* Breadcrumb */}
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
           <Button variant="ghost" size="sm" asChild>
-            <Link href={`/public/community/${params.community_id}`}>
+            <Link href={`/public/community/${community_id}`}>
               <ArrowLeft className="mr-2 h-4 w-4" />
               Voltar para comunidade
             </Link>

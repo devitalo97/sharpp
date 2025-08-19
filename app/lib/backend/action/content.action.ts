@@ -7,21 +7,39 @@ import { MongoRepository } from "../infrastructure/repository/mongo.repository";
 import { S3Repository } from "../infrastructure/repository/s3.repository";
 import { CreateManyContentUsecase } from "../usecase/create-many.content.usecase";
 import { CreateOneContentUsecase } from "../usecase/create-one.content.usecase";
+import { DownloadOneMediaUseCase } from "../usecase/download.media.usecase";
 import { FindManyContentUsecase } from "../usecase/find-many.content.usecase";
 import { FindOneByIdContentUsecase } from "../usecase/find-one-by-id.content.usecase";
 import { UpdateOneContentUsecase } from "../usecase/update-one.content.usecase";
 
-const mongodb = new MongoRepository<Content>(mongoDbClient, "sharp", "content");
-const s3Repository = new S3Repository(s3Client, {
+const documentRepository = new MongoRepository<Content>(
+  mongoDbClient,
+  process.env.MONGODB_DB_NAME!,
+  "content"
+);
+const objectRepository = new S3Repository(s3Client, {
   region: process.env.S3_REGION!,
   bucket: process.env.S3_BUCKET_NAME!,
 });
 
-const createManyUsecase = new CreateManyContentUsecase(mongodb, s3Repository);
-const createOneUsecase = new CreateOneContentUsecase(mongodb, s3Repository);
-const updateOneUsecase = new UpdateOneContentUsecase(mongodb, s3Repository);
-const findOneByIdUsecase = new FindOneByIdContentUsecase(mongodb);
-const findManyUsecase = new FindManyContentUsecase(mongodb);
+const createManyUsecase = new CreateManyContentUsecase(
+  documentRepository,
+  objectRepository
+);
+const createOneUsecase = new CreateOneContentUsecase(
+  documentRepository,
+  objectRepository
+);
+const updateOneUsecase = new UpdateOneContentUsecase(
+  documentRepository,
+  objectRepository
+);
+const findOneByIdUsecase = new FindOneByIdContentUsecase(documentRepository);
+const findManyUsecase = new FindManyContentUsecase(documentRepository);
+const downloadOneMediaUsecase = new DownloadOneMediaUseCase(
+  documentRepository,
+  objectRepository
+);
 
 export async function createManyContentAction(input: Content[]) {
   return await createManyUsecase.execute(input);
@@ -44,4 +62,11 @@ export async function findOneByIdContentAction(id: string) {
 
 export async function findManyContentAction(input: Partial<Content>) {
   return await findManyUsecase.execute(input);
+}
+
+export async function downloadOneMediaAction(input: {
+  content_id: string;
+  media_id: string;
+}) {
+  return await downloadOneMediaUsecase.execute(input);
 }

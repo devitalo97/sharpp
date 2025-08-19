@@ -3,20 +3,20 @@ import { S3Repository } from "@/app/lib/backend/infrastructure/repository/s3.rep
 import { s3Client } from "@/app/lib/backend/infrastructure/client/s3.client";
 import { GenerateSignedPutUrlUseCase } from "@/app/lib/backend/usecase/generate-signed-put-url.content.usecase";
 
-const s3Repository = new S3Repository(s3Client, {
+const objectRepository = new S3Repository(s3Client, {
+  region: process.env.S3_REGION!,
   bucket: process.env.S3_BUCKET_NAME!,
-  region: process.env.AWS_REGION || "us-east-1",
   defaultPutExpirySec: 900, // 15 minutos
 });
 
 const generateSignedPutUrlUseCase = new GenerateSignedPutUrlUseCase(
-  s3Repository
+  objectRepository
 );
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { key, contentType, metadata } = body;
+    const { key, contentType } = body;
 
     // Validações básicas
     if (!key || !contentType) {
@@ -30,7 +30,6 @@ export async function POST(request: NextRequest) {
     const signedUrl = await generateSignedPutUrlUseCase.execute({
       key,
       contentType,
-      metadata,
       expiresInSeconds: 900, // 15 minutos
     });
 

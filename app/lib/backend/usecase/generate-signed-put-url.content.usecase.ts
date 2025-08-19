@@ -4,7 +4,6 @@ export interface GenerateSignedPutUrlInput {
   key: string;
   contentType: string;
   expiresInSeconds?: number;
-  metadata?: Record<string, string>;
 }
 
 export class GenerateSignedPutUrlUseCase {
@@ -16,7 +15,6 @@ export class GenerateSignedPutUrlUseCase {
       key: input.key,
       contentType: input.contentType,
       expiresInSeconds: input.expiresInSeconds,
-      metadata: input.metadata,
     });
 
     return signedUrl;

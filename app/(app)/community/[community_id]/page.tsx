@@ -37,7 +37,6 @@ import {
   Copy,
   Calendar,
   User,
-  Trash2,
   Archive,
   UserPlus,
   ExternalLink,
@@ -45,23 +44,7 @@ import {
 import { findOneByIdCommunityAction } from "@/app/lib/backend/action/community.action";
 import { notFound } from "next/navigation";
 
-type CommunityStatus = "active" | "paused" | "archived";
 type CommunityVisibility = "private" | "unlisted" | "public";
-
-interface Community {
-  id: string;
-  tenant_id: string;
-  name: string;
-  slug: string;
-  description?: string;
-  status: CommunityStatus;
-  visibility: CommunityVisibility;
-  tags?: string[];
-  limits?: { members_qty?: number };
-  owner_id: string;
-  created_at: Date;
-  updated_at: Date;
-}
 
 interface CommunityStats {
   members_count: number;
@@ -82,23 +65,6 @@ interface MemberPreview {
   role: "owner" | "admin" | "member";
   avatar_url?: string;
 }
-
-// Mock data for demonstration
-const mockCommunity: Community = {
-  id: "comm-123",
-  tenant_id: "tenant-1",
-  name: "Comunidade de Desenvolvedores",
-  slug: "dev-community",
-  description:
-    "Uma comunidade para desenvolvedores compartilharem conhecimento e experiências sobre tecnologia.",
-  status: "active",
-  visibility: "public",
-  tags: ["Tecnologia", "Desenvolvimento", "JavaScript", "React"],
-  limits: { members_qty: 1000 },
-  owner_id: "user-1",
-  created_at: new Date("2024-01-15"),
-  updated_at: new Date("2024-12-15"),
-};
 
 const mockStats: CommunityStats = {
   members_count: 247,
@@ -174,32 +140,6 @@ function formatDate(date: Date): string {
   }).format(date);
 }
 
-function getStatusBadgeVariant(status: CommunityStatus) {
-  switch (status) {
-    case "active":
-      return "default";
-    case "paused":
-      return "secondary";
-    case "archived":
-      return "destructive";
-    default:
-      return "outline";
-  }
-}
-
-function getStatusLabel(status: CommunityStatus) {
-  switch (status) {
-    case "active":
-      return "Ativa";
-    case "paused":
-      return "Pausada";
-    case "archived":
-      return "Arquivada";
-    default:
-      return status;
-  }
-}
-
 function getVisibilityIcon(visibility: CommunityVisibility) {
   switch (visibility) {
     case "public":
@@ -255,7 +195,7 @@ function getRoleLabel(role: string) {
 export default async function CommunityPage({
   params,
 }: {
-  params: { community_id: string };
+  params: Promise<{ community_id: string }>;
 }) {
   const { community_id } = await params;
 

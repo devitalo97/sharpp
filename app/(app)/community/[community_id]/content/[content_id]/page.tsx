@@ -23,10 +23,10 @@ import { formatBytes } from "@/app/lib/frontend/util/format-bytes";
 import { MediaCard } from "./components/media-card";
 
 interface PageProps {
-  params: {
+  params: Promise<{
     community_id: string;
     content_id: string;
-  };
+  }>;
 }
 
 export default async function ContentDisplayPage({ params }: PageProps) {

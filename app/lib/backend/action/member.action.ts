@@ -9,13 +9,17 @@ import { FindManyMemberUsecase } from "../usecase/find-many.member.usecase";
 import { FindOneByIdMemberUsecase } from "../usecase/find-one-by-id.member.usecase";
 import { UpdateOneMemberUsecase } from "../usecase/update-one.member.usecase";
 
-const mongodb = new MongoRepository<Member>(mongoDbClient, "sharp", "member");
+const documentRepository = new MongoRepository<Member>(
+  mongoDbClient,
+  process.env.MONGODB_DB_NAME!,
+  "member"
+);
 
-const createOneUsecase = new CreateOneMemberUsecase(mongodb);
-const findOneByIdUsecase = new FindOneByIdMemberUsecase(mongodb);
-const findManyUsecase = new FindManyMemberUsecase(mongodb);
-const updateOneUsecase = new UpdateOneMemberUsecase(mongodb);
-const deleteByIdOneUsecase = new DeleteOneByIdMemberUsecase(mongodb);
+const createOneUsecase = new CreateOneMemberUsecase(documentRepository);
+const findOneByIdUsecase = new FindOneByIdMemberUsecase(documentRepository);
+const findManyUsecase = new FindManyMemberUsecase(documentRepository);
+const updateOneUsecase = new UpdateOneMemberUsecase(documentRepository);
+const deleteByIdOneUsecase = new DeleteOneByIdMemberUsecase(documentRepository);
 
 export async function createOneMemberAction(input: Member) {
   return await createOneUsecase.execute(input);

@@ -68,7 +68,7 @@ async function copyToClipboard(text: string) {
 
 async function refreshMediaUrl(contentId: string, mediaId: string) {
   // Simulate API call to refresh URL
-  toast("Link atualizado!");
+  toast("Link atualizado!" + contentId + mediaId);
 }
 
 function MediaCard({
@@ -229,7 +229,9 @@ function MediaCard({
                 asChild
               >
                 <a
-                  href={media.storage.url}
+                  href={`/api/download-media?content_id=${encodeURIComponent(
+                    content_id
+                  )}&media_id=${encodeURIComponent(media.id)}`}
                   download
                   target="_blank"
                   rel="noopener noreferrer"

@@ -9,7 +9,6 @@ import {
   Activity,
   Calendar,
   Crown,
-  Mail,
   Shield,
   User,
   UserCog,

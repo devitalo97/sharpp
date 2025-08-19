@@ -1,5 +1,6 @@
 import { ContentUpsertForm } from "@/app/lib/frontend/components/form/upsert.content.form";
 import { PageHeader } from "@/app/lib/frontend/components/page-header";
+import { nanoid } from "nanoid";
 
 interface PageProps {
   params: {
@@ -9,6 +10,7 @@ interface PageProps {
 
 export default async function Page({ params }: PageProps) {
   const { community_id } = await params;
+  const contentId = nanoid();
 
   return (
     <div className="grid gap-4">
@@ -27,7 +29,7 @@ export default async function Page({ params }: PageProps) {
           { label: "Novo conteúdo" },
         ]}
       />
-      <ContentUpsertForm communityId={community_id} />
+      <ContentUpsertForm communityId={community_id} contentId={contentId} />
     </div>
   );
 }
