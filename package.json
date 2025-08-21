@@ -30,6 +30,7 @@
     "@radix-ui/react-tooltip": "^1.2.7",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
+    "libphonenumber-js": "^1.12.13",
     "lucide-react": "^0.536.0",
     "mime-types": "^3.0.1",
     "mongodb": "^6.18.0",

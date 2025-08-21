@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import { PageHeader } from "@/components/page-header";
-import { CreateMemberForm } from "@/app/lib/frontend/components/form/create.member.form";
+import { UpsertMemberForm } from "@/app/lib/frontend/components/form/upsert.member.form";
 import { findOneByIdCommunityAction } from "@/app/lib/backend/action/community.action";
 
 interface PageProps {
@@ -34,7 +34,7 @@ export default async function Page({ params }: PageProps) {
         breadcrumbs={breadcrumbs}
       />
 
-      <CreateMemberForm community_id={community_id} />
+      <UpsertMemberForm community_id={community_id} />
     </div>
   );
 }

@@ -10,11 +10,12 @@ export interface Member {
   community_id: string;
   user_id?: string; // undefined até aceitar convite
 
-  name: string; // snapshot do nome no momento do convite
-  email: string; // snapshot do momento do convite
-  bio?: string;
+  name: string;
   role: MemberRole;
   status: MemberStatus;
+  email?: string;
+  phone?: string;
+  bio?: string;
 
   invite?: {
     token_hash: string; // hash do token de convite
