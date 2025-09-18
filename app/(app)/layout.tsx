@@ -38,9 +38,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             </Button>
           </div>
         </header>
-        <main className="p-4">
-          <div className="mx-auto max-w-7xl">{children}</div>
-        </main>
+        <main className="w-full">{children}</main>
       </SidebarInset>
     </WithSidebar>
   );

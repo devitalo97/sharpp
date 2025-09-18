@@ -28,12 +28,12 @@ export function PageHeader({
   actions,
 }: PageHeaderProps) {
   return (
-    <div className="grid gap-4">
+    <div className="grid gap-4 p-4">
       {breadcrumbs && breadcrumbs.length > 0 && (
         <Breadcrumb>
           <BreadcrumbList>
             {breadcrumbs.map((item, index) => (
-              <div key={index} className="flex items-center">
+              <div key={index} className="flex items-center gap-1.5 sm:gap-2.5">
                 {index > 0 && <BreadcrumbSeparator />}
                 {item.href ? (
                   <BreadcrumbLink href={item.href}>{item.label}</BreadcrumbLink>
@@ -45,18 +45,19 @@ export function PageHeader({
           </BreadcrumbList>
         </Breadcrumb>
       )}
-
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        {(title || description) && (
-          <div className="space-y-1">
-            {title && <h1 className="text-xl font-semibold">{title}</h1>}
-            {description && (
-              <p className="text-sm text-muted-foreground">{description}</p>
-            )}
-          </div>
-        )}
-        {actions && <div className="flex items-center gap-2">{actions}</div>}
-      </div>
+      {(title || description || actions) && (
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          {(title || description) && (
+            <div className="space-y-1">
+              {title && <h1 className="text-xl font-semibold">{title}</h1>}
+              {description && (
+                <p className="text-sm text-muted-foreground">{description}</p>
+              )}
+            </div>
+          )}
+          {actions && <div className="flex items-center gap-2">{actions}</div>}
+        </div>
+      )}
     </div>
   );
 }
