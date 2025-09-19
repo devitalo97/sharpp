@@ -15,6 +15,6 @@ const TextContent = z.object({
 
 export const TextBlockSchema = z.object({
   id: z.uuid(),
-  type: z.enum(BlockType),
+  type: z.enum(BlockType).default(BlockType.paragraph),
   content: TextContent,
 });

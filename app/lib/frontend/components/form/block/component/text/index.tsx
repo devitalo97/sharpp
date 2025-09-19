@@ -1,22 +1,24 @@
 "use client";
 import type React from "react";
-import { useCallback, useLayoutEffect, useRef, useState } from "react";
-import { useFormContext, Controller } from "react-hook-form";
+import { useCallback, useRef, useState } from "react";
+import { ControllerRenderProps, useFormContext } from "react-hook-form";
 import type { BlocksFormInput } from "../../upsert/use-upsert.block.form";
+import { BlockType } from "@/app/lib/backend/domain/entity/block";
 
-export function TextBlockRow({
+export function TextBlock({
   index,
   onSplitBefore,
   onBackspaceEmpty,
+  field,
 }: {
   index: number;
   onSplitBefore: () => void;
   onBackspaceEmpty?: () => void;
+  field: ControllerRenderProps<BlocksFormInput>;
 }) {
-  const { control, watch } = useFormContext<BlocksFormInput>();
+  const { watch } = useFormContext<BlocksFormInput>();
   const inputRef = useRef<HTMLDivElement | null>(null);
   const composingRef = useRef(false);
-  const lastAppliedRef = useRef<string>("");
   const [isFocused, setIsFocused] = useState(false);
 
   const handleKeyDown = useCallback(
@@ -37,16 +39,7 @@ export function TextBlockRow({
     [onSplitBefore, onBackspaceEmpty]
   );
 
-  useLayoutEffect(() => {
-    const val = watch(`blocks.${index}.content.plain`) ?? "";
-    if (!inputRef.current) return;
-    if (inputRef.current.innerText !== val) {
-      inputRef.current.innerText = val;
-      lastAppliedRef.current = val;
-    }
-  }, [watch, index]);
-
-  const blockType = watch(`blocks.${index}.type`) || "text";
+  const blockType = watch(`blocks.${index}.type`) || BlockType.paragraph;
   const content = watch(`blocks.${index}.content.plain`) || "";
   const isEmpty = content.trim() === "";
 
@@ -76,12 +69,6 @@ export function TextBlockRow({
           ].join(" "),
           placeholder: "Escreva uma citação…",
         };
-      case "logo":
-        return {
-          className:
-            "text-base leading-relaxed text-foreground flex items-center gap-2",
-          placeholder: "Logo ou imagem…",
-        };
       default:
         return {
           className: "text-base leading-relaxed text-foreground",
@@ -93,19 +80,14 @@ export function TextBlockRow({
   const blockStyles = getBlockStyles(blockType);
 
   return (
-    <div className="group relative">
-      <Controller
-        control={control}
-        name={`blocks.${index}.content.plain`}
-        render={({ field }) => (
-          <div className="relative">
-            <div
-              ref={inputRef}
-              suppressContentEditableWarning
-              dir="ltr"
-              role="textbox"
-              aria-multiline="true"
-              className={`
+    <div className="relative">
+      <div
+        ref={inputRef}
+        suppressContentEditableWarning
+        dir="ltr"
+        role="textbox"
+        aria-multiline="true"
+        className={`
                 ${blockStyles.className}
                 min-h-[1.5rem] 
                 outline-none 
@@ -116,49 +98,46 @@ export function TextBlockRow({
                 duration-200
                 ${isFocused ? "ring-0" : ""}
               `}
-              onFocus={() => setIsFocused(true)}
-              onBlur={(e) => {
-                setIsFocused(false);
-                const next = (e.currentTarget as HTMLDivElement).innerText;
-                if (next !== field.value) field.onChange(next);
-              }}
-              onPaste={(e) => {
-                e.preventDefault();
-                const text = e.clipboardData.getData("text/plain");
-                document.execCommand("insertText", false, text);
-              }}
-              onCompositionStart={() => {
-                composingRef.current = true;
-              }}
-              onCompositionEnd={(e) => {
-                composingRef.current = false;
-                const next = (e.currentTarget as HTMLDivElement).innerText;
-                if (next !== field.value) field.onChange(next);
-              }}
-              onInput={(e) => {
-                if (composingRef.current) return;
-                const next = (e.currentTarget as HTMLDivElement).innerText;
-                if (next !== field.value) field.onChange(next);
-              }}
-              onKeyDown={handleKeyDown}
-              contentEditable="plaintext-only"
-              autoFocus={index === 0}
-            />
-            {isEmpty && !isFocused && (
-              <div
-                className="absolute inset-0 pointer-events-none text-muted-foreground py-1 select-none"
-                style={{
-                  fontSize: "inherit",
-                  lineHeight: "inherit",
-                  fontWeight: "inherit",
-                }}
-              >
-                {blockStyles.placeholder}
-              </div>
-            )}
-          </div>
-        )}
+        onFocus={() => setIsFocused(true)}
+        onBlur={(e) => {
+          setIsFocused(false);
+          const next = (e.currentTarget as HTMLDivElement).innerText;
+          if (next !== field.value) field.onChange(next);
+        }}
+        onPaste={(e) => {
+          e.preventDefault();
+          const text = e.clipboardData.getData("text/plain");
+          document.execCommand("insertText", false, text);
+        }}
+        onCompositionStart={() => {
+          composingRef.current = true;
+        }}
+        onCompositionEnd={(e) => {
+          composingRef.current = false;
+          const next = (e.currentTarget as HTMLDivElement).innerText;
+          if (next !== field.value) field.onChange(next);
+        }}
+        onInput={(e) => {
+          if (composingRef.current) return;
+          const next = (e.currentTarget as HTMLDivElement).innerText;
+          if (next !== field.value) field.onChange(next);
+        }}
+        onKeyDown={handleKeyDown}
+        contentEditable="plaintext-only"
+        autoFocus={index === 0}
       />
+      {isEmpty && !isFocused && (
+        <div
+          className="absolute inset-0 pointer-events-none text-muted-foreground py-1 select-none"
+          style={{
+            fontSize: "inherit",
+            lineHeight: "inherit",
+            fontWeight: "inherit",
+          }}
+        >
+          {blockStyles.placeholder}
+        </div>
+      )}
     </div>
   );
 }

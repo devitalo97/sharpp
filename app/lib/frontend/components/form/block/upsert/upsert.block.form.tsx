@@ -11,8 +11,8 @@ import {
 } from "./use-upsert.block.form";
 import { nanoid } from "nanoid";
 import { SortableRow } from "../component/sortable-row";
-import { TextBlockRow } from "../component/text";
 import { BlockType } from "@/app/lib/backend/domain/entity/block";
+import { BlockRender } from "../component/render";
 
 export function UpsertBlockForm() {
   const {
@@ -95,7 +95,7 @@ export function UpsertBlockForm() {
                         }}
                         onDuplicate={() => duplicateBlock(i)}
                       >
-                        <TextBlockRow
+                        <BlockRender
                           index={i}
                           onSplitBefore={() => splitAt(i)}
                           onBackspaceEmpty={() => {

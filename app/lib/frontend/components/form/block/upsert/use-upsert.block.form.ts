@@ -78,7 +78,7 @@ export function useUpsertBlockForm(initial?: Partial<BlocksFormInput>) {
   );
   const splitAt = useCallback(
     (i: number) => {
-      const currentType = getValues(`blocks.${i}.type`) || "text"; // 👈 herda tipo atual
+      const currentType = getValues(`blocks.${i}.type`) || BlockType.paragraph; // 👈 herda tipo atual
       const id = nanoid();
       insert(i + 1, {
         id,
