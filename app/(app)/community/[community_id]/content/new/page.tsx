@@ -1,5 +1,5 @@
 import { findOneByIdCommunityAction } from "@/app/lib/backend/action/community.action";
-import { UpsertBlockForm } from "@/app/lib/frontend/components/form/upsert.block.form";
+import { UpsertBlockForm } from "@/app/lib/frontend/components/form/block/upsert/upsert.block.form";
 import { PageHeader } from "@/app/lib/frontend/components/page-header";
 
 interface PageProps {

@@ -72,7 +72,21 @@ export type BlockContentMap = {
   page: { title: string };
 };
 
-export type BlockType = keyof BlockContentMap;
+export enum BlockType {
+  paragraph = "paragraph",
+  heading_1 = "heading_1",
+  heading_2 = "heading_2",
+  heading_3 = "heading_3",
+  toggle = "toggle",
+  quote = "quote",
+  image = "image",
+  video = "video",
+  audio = "audio",
+  file = "file",
+  pdf = "pdf",
+  link_to_page = "link_to_page",
+  page = "page",
+}
 
 /** ===================== BLOCK GENÉRICO/UNIÃO ======================== */
 
